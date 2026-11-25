@@ -1,0 +1,889 @@
+<title>Mô hình máy may 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: xưởng thí nghiệm — sân khấu 3D bên trái, bảng điều khiển như hộp số máy may bên phải, dải tín hiệu kiểu logic analyzer bên dưới */
+:root{
+  --bg:#EEF1F5; --card:#FFFFFF; --ink:#1A2230; --muted:#5A6476; --line:#D8DEE7;
+  --denim:#2F4A7A; --denim-soft:#E2E8F3; --thread:#E0A82E; --thread-soft:#FBF1D9;
+  --danger:#C23B3B; --danger-soft:#FBE7E7; --ok:#2E7D5B; --ok-soft:#E1F1E9;
+  --scene:#E6EAF0; --code-bg:#F5F7FA;
+  --f-body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10141B; --card:#181E27; --ink:#E5E9F0; --muted:#98A2B3; --line:#2A3240;
+  --denim:#91AEE4; --denim-soft:#212D44; --thread:#E9B949; --thread-soft:#33290F;
+  --danger:#F07C7C; --danger-soft:#3A1C1C; --ok:#6CC79C; --ok-soft:#1B3228;
+  --scene:#161B23; --code-bg:#121821; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10141B; --card:#181E27; --ink:#E5E9F0; --muted:#98A2B3; --line:#2A3240;
+  --denim:#91AEE4; --denim-soft:#212D44; --thread:#E9B949; --thread-soft:#33290F;
+  --danger:#F07C7C; --danger-soft:#3A1C1C; --ok:#6CC79C; --ok-soft:#1B3228;
+  --scene:#161B23; --code-bg:#121821; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14.5px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:4px}
+h1{font-size:clamp(22px,3vw,30px);line-height:1.2;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:15px;margin:0;font-weight:700;letter-spacing:.01em}
+p{margin:0}
+.lead{color:var(--muted);max-width:80ch}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--denim)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:16px;align-items:start}
+.stage{position:relative;height:clamp(440px,74vh,780px);border-radius:14px;overflow:hidden;background:var(--scene);border:1px solid var(--line)}
+#c3d{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;transform:translate(-50%,-100%);font-size:11.5px;font-weight:500;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:1px 7px;white-space:nowrap;opacity:.92}
+.lbl.sel{border-color:var(--thread);background:var(--thread-soft)}
+.cams{position:absolute;top:10px;left:10px;display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 20px)}
+.hint{position:absolute;left:10px;bottom:10px;right:10px;font-size:12px;color:var(--muted);pointer-events:none}
+.err{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted)}
+button,select{font:inherit;color:var(--ink)}
+.btn{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13.5px;font-weight:500}
+.btn:hover{border-color:var(--denim)}
+.btn.primary{background:var(--denim);border-color:var(--denim);color:var(--card)}
+.btn.sm{padding:3px 9px;font-size:12.5px}
+.btn[aria-pressed="true"]{border-color:var(--thread);background:var(--thread-soft)}
+.btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--thread);outline-offset:2px}
+.panel{display:flex;flex-direction:column;gap:12px;max-height:clamp(440px,74vh,780px);overflow:auto;padding-right:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl{display:flex;flex-direction:column;gap:3px}
+.ctl label{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted)}
+.ctl label b{color:var(--ink);font-weight:600;font-family:var(--f-mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--denim)}
+select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13px;max-width:100%}
+.chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.chk input{accent-color:var(--denim);width:16px;height:16px;margin:0}
+.timing{font-size:13px;border-radius:8px;padding:8px 10px;background:var(--ok-soft);color:var(--ok)}
+.timing.bad{background:var(--danger-soft);color:var(--danger)}
+.dialrow{display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;align-items:center}
+.dial{width:170px;height:170px;cursor:grab;touch-action:none;border-radius:50%}
+.dial:active{cursor:grabbing}
+.scrub{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.keys{display:flex;flex-wrap:wrap;gap:5px}
+.now{display:flex;flex-direction:column;gap:6px;border-top:1px dashed var(--line);padding-top:10px}
+.now h3{font-size:13.5px;margin:0;font-weight:700}
+.needle-pos{font-weight:600;font-size:13.5px}
+.needle-pos.above{color:var(--ok)}
+.needle-pos.below{color:var(--danger)}
+.what{font-size:13.5px}
+.fw{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;margin:0}
+.vars{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;font-family:var(--f-mono);font-size:12px;margin:0}
+.vars dt{color:var(--muted)}
+.vars dd{margin:0;font-variant-numeric:tabular-nums;min-width:0}
+.phases{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.phases li{padding:4px 8px;border-radius:6px;color:var(--muted);border:1px solid transparent}
+.phases li.on{color:var(--ink);background:var(--thread-soft);border-color:var(--thread)}
+.phases li b{font-family:var(--f-mono);font-weight:600;color:inherit}
+.status{font-size:13px;font-weight:600;border-radius:8px;padding:8px 10px;background:var(--denim-soft);color:var(--denim)}
+.status.fault{background:var(--danger-soft);color:var(--danger)}
+.status.done{background:var(--ok-soft);color:var(--ok)}
+.code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:6px 0;max-height:230px;overflow:auto}
+.code div{padding:1px 10px;white-space:pre;display:flex;justify-content:space-between;gap:10px}
+.code div.on{background:var(--thread-soft);box-shadow:inset 3px 0 0 var(--thread)}
+.code .rep{color:var(--muted)}
+.code .dim{color:var(--muted)}
+textarea{width:100%;min-height:170px;font-family:var(--f-mono);font-size:12px;background:var(--code-bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical}
+.msg{font-size:12.5px;color:var(--danger)}
+.small{font-size:12.5px;color:var(--muted)}
+.info-code{font-family:var(--f-mono);font-size:12px;background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;white-space:pre-wrap;word-break:break-word}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.analyzer canvas{width:100%;height:190px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+@media (max-width:1000px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .panel{max-height:none;overflow:visible}
+  .stage{height:clamp(380px,62vh,620px)}
+}
+@media (max-width:460px){ .dialrow{grid-template-columns:1fr;justify-items:center} }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Mô phỏng theo code bước 1 · Arduino Uno + CNC Shield</span>
+    <h1>Mô hình máy may lập trình 3D</h1>
+    <p class="lead">File mẫu, bo mạch, encoder, motor bước và kim chạy cùng nhau như trong code. Mỗi vòng quay trục kim là một mũi. Khung vải chỉ dịch khi kim ở trên mặt vải. Bấm vào từng bộ phận để xem nó làm gì và dòng code nào điều khiển nó.</p>
+  </header>
+
+  <div class="layout">
+    <div class="stage" id="stage">
+      <canvas id="c3d" tabindex="0" aria-label="Mô hình 3D máy may lập trình. Kéo để xoay góc nhìn."></canvas>
+      <div class="labels" id="labels" aria-hidden="true"></div>
+      <div class="cams" role="group" aria-label="Góc nhìn">
+        <button class="btn sm" id="camAll" type="button">Toàn cảnh</button>
+        <button class="btn sm" id="camNeedle" type="button">Kim và vải</button>
+        <button class="btn sm" id="camWheel" type="button">Vô lăng, encoder</button>
+        <button class="btn sm" id="camBoard" type="button">Bo mạch</button>
+      </div>
+      <p class="hint">Kéo để xoay · cuộn chuột hoặc chụm 2 ngón để phóng to · chuột phải để dời · bấm vào bộ phận để xem giải thích</p>
+      <div class="err" id="loadErr" hidden><p>Không tải được thư viện 3D. Kiểm tra kết nối mạng rồi tải lại trang.</p></div>
+    </div>
+
+    <aside class="panel">
+      <section class="card" aria-labelledby="hCtl">
+        <h2 id="hCtl">Điều khiển</h2>
+        <div class="row">
+          <button class="btn primary" id="btnRun" type="button">Chạy</button>
+          <button class="btn" id="btnStep" type="button">Quay 1 vòng</button>
+          <button class="btn" id="btnReset" type="button">Về đầu mẫu</button>
+        </div>
+        <div class="ctl">
+          <label for="spm">Tốc độ máy <b id="spmOut">300 mũi/phút</b></label>
+          <input type="range" id="spm" min="60" max="1500" step="10" value="300">
+        </div>
+        <div class="ctl">
+          <label for="vmax">Tốc độ motor X–Y <b id="vmaxOut">100 mm/s</b></label>
+          <input type="range" id="vmax" min="20" max="200" step="5" value="100">
+        </div>
+        <div class="row">
+          <label class="small" for="slow">Quay chậm để nhìn</label>
+          <select id="slow">
+            <option value="1">Tốc độ thật</option>
+            <option value="0.25">Chậm 4 lần</option>
+            <option value="0.1" selected>Chậm 10 lần</option>
+            <option value="0.03">Chậm 33 lần</option>
+          </select>
+        </div>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="xray"> Nhìn xuyên vỏ máy</label>
+          <label class="chk"><input type="checkbox" id="showLbl" checked> Hiện tên bộ phận</label>
+        </div>
+        <p class="timing" id="timing" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="hRev">
+        <h2 id="hRev">Một vòng quay kim</h2>
+        <div class="dialrow">
+          <svg class="dial" id="dial" viewBox="-26 -12 202 178" tabindex="0" role="slider" aria-label="Góc kim. Kéo trên vòng tròn hoặc dùng phím mũi tên để quay kim" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0">
+            <circle cx="75" cy="75" r="58" fill="none" stroke="var(--line)" stroke-width="10"/>
+            <path id="arcUnder" fill="none" stroke="var(--danger)" stroke-opacity=".35" stroke-width="10"/>
+            <path id="arcWin" fill="none" stroke="var(--ok)" stroke-width="10"/>
+            <g font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--muted)" text-anchor="middle">
+              <text x="75" y="-1">0°</text><text x="143" y="79" text-anchor="start">90°</text><text x="75" y="160">180°</text><text x="7" y="79" text-anchor="end">270°</text>
+            </g>
+            <circle id="penDot" r="4.5" fill="var(--danger)"/>
+            <line id="hand" x1="75" y1="75" x2="75" y2="22" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="75" cy="75" r="4" fill="var(--ink)"/>
+            <text id="dialDeg" x="75" y="98" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" fill="var(--ink)">0°</text>
+          </svg>
+          <ul class="phases" id="phases">
+            <li data-p="p1"><b>0°</b> Kim cao nhất. Cảm biến chữ U báo mốc</li>
+            <li data-p="p2"><b>300°→60°</b> Cửa sổ mở: khung vải dịch 1 mũi</li>
+            <li data-p="p3"><b>60°→150°</b> Khung đứng yên, kim cắm xuống vải (75°)</li>
+            <li data-p="p4"><b>150°→210°</b> Kim thấp nhất, ổ chao móc chỉ</li>
+            <li data-p="p5"><b>210°→300°</b> Kim rút lên, chỉ được kéo chặt</li>
+          </ul>
+        </div>
+        <div class="scrub">
+          <div class="ctl">
+            <label for="ang">Quay kim bằng tay <b id="angOut">0°</b></label>
+            <input type="range" id="ang" min="0" max="359" step="1" value="0">
+          </div>
+          <div class="row">
+            <button class="btn sm" id="bkRev" type="button">« Lùi 1 vòng</button>
+            <button class="btn sm" id="bk5" type="button">‹ 5°</button>
+            <button class="btn sm" id="fw5" type="button">5° ›</button>
+            <button class="btn sm" id="fwRev" type="button">Tới 1 vòng »</button>
+          </div>
+          <div class="keys" role="group" aria-label="Nhảy tới góc quan trọng">
+            <button class="btn sm" type="button" data-a="0">0° mốc kim</button>
+            <button class="btn sm" type="button" data-a="300">300° cửa sổ mở</button>
+            <button class="btn sm" type="button" data-a="60">60° cửa sổ đóng</button>
+            <button class="btn sm" type="button" data-a="75">75° kim chạm vải</button>
+            <button class="btn sm" type="button" data-a="180">180° kim thấp nhất</button>
+          </div>
+          <p class="small">Kéo kim trên vòng tròn, kéo thanh trượt hoặc bấm nút. Mô hình bên trái tự phóng tới cây kim. Khi lùi lại, máy tính lại từ đầu mẫu nên các mũi đã may cũng lùi theo.</p>
+        </div>
+        <p class="status" id="status" aria-live="polite">Đang chờ</p>
+        <div class="now" aria-live="polite">
+          <h3>Ở góc này đang xảy ra gì</h3>
+          <p class="needle-pos" id="nowNeedle"></p>
+          <p class="what" id="nowWhat"></p>
+          <pre class="fw" id="nowCode"></pre>
+          <dl class="vars" id="nowVars"></dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="hPat">
+        <h2 id="hPat">File mẫu may (bảng PATTERN trong code)</h2>
+        <div class="row">
+          <select id="patSel" aria-label="Chọn mẫu">
+            <option value="square">Hình vuông 20 mm (giống code bước 1)</option>
+            <option value="star">Ngôi sao 50 mm</option>
+            <option value="label">Nhãn mác 40×20 mm có may lại mũi</option>
+          </select>
+          <button class="btn sm" id="btnEdit" type="button" aria-pressed="false">Sửa mẫu</button>
+        </div>
+        <div class="code" id="patView" aria-label="Các dòng của file mẫu"></div>
+        <div id="editBox" hidden>
+          <textarea id="patText" spellcheck="false" aria-label="Sửa các dòng mẫu"></textarea>
+          <div class="row" style="margin-top:6px">
+            <button class="btn sm primary" id="btnLoad" type="button">Nạp mẫu vào máy</button>
+            <span class="msg" id="patErr"></span>
+          </div>
+          <p class="small">Mỗi dòng: <code>{ dx, dy, LỆNH, số lần }</code>, đơn vị 0,1 mm. Lệnh: STITCH, FOOT_DOWN, FOOT_UP, END. Viết đúng như trong code Arduino nên chép qua lại được.</p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="infoTitle" id="infoCard">
+        <h2 id="infoTitle">Bộ phận</h2>
+        <p id="infoText" class="small">Bấm vào một bộ phận trên mô hình, hoặc chọn bên dưới.</p>
+        <div id="infoCode" class="info-code" hidden></div>
+        <div class="chips" id="chips"></div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card analyzer" aria-labelledby="hLa">
+    <h2 id="hLa">Tín hiệu điện 2 vòng gần nhất (như nhìn bằng logic analyzer)</h2>
+    <canvas id="la" aria-label="Biểu đồ tín hiệu encoder, mốc kim, cửa sổ, xung STEP và solenoid theo góc quay"></canvas>
+    <div class="legend">
+      <span><i style="background:#1FA396"></i>Encoder kênh A (vẽ thưa, thật là 600 xung/vòng)</span>
+      <span><i style="background:#D24FA8"></i>Mốc kim từ cảm biến chữ U</span>
+      <span><i style="background:#3B82F6"></i>Xung STEP X (chân D2)</span>
+      <span><i style="background:#F59E0B"></i>Xung STEP Y (chân D3)</span>
+      <span><i style="background:#9B6BDF"></i>Solenoid (chân D11): cao = đá 100%, giữa = giữ</span>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ======================= HẰNG SỐ GIỐNG CODE =======================
+const WIN_START = 300, WIN_END = 60;   // cửa sổ dịch vải
+const PEN = 75;                        // góc mũi kim chạm vải
+const STEPS_PER_MM = 80;
+const SOL_KICK_MS = 50;
+const S = 0.2;                         // tỉ lệ hiển thị: 1 mm = 0,2 đơn vị (phóng to gấp đôi)
+const NX = -22, NZ = 2.5;              // vị trí kim
+const FAB_Y = 2.2, A = 2.2;            // mặt vải, biên độ kim
+const COL = {enc:'#1FA396', idx:'#D24FA8', sx:'#3B82F6', sy:'#F59E0B', sol:'#9B6BDF', pow:'#D64545'};
+const inWindow = th => th >= WIN_START || th <= WIN_END;
+
+// ======================= MẪU MAY =======================
+function fmtLine(l){ const p=(n,w)=>String(n).padStart(w,' '); return `{ ${p(l.dx,4)}, ${p(l.dy,4)}, ${l.cmd.padEnd(9,' ')}, ${p(l.lap,2)} },`; }
+function patternText(lines){ return lines.map(fmtLine).join('\n'); }
+function makeStar(){
+  const R=25, pts=[];
+  for(let k=0;k<5;k++){ const a=(90+k*144)*Math.PI/180; pts.push([R*Math.cos(a),R*Math.sin(a)]); }
+  pts.push(pts[0]);
+  const L=[{dx:0,dy:0,cmd:'FOOT_DOWN',lap:1}];
+  for(let k=0;k<5;k++){ const dx=pts[k+1][0]-pts[k][0], dy=pts[k+1][1]-pts[k][1], n=16;
+    L.push({dx:Math.round(dx/n*10),dy:Math.round(dy/n*10),cmd:'STITCH',lap:n}); }
+  L.push({dx:0,dy:0,cmd:'FOOT_UP',lap:1},{dx:0,dy:0,cmd:'END',lap:1});
+  return L;
+}
+const PATTERNS = {
+  square:[{dx:0,dy:0,cmd:'FOOT_DOWN',lap:1},{dx:25,dy:0,cmd:'STITCH',lap:8},{dx:0,dy:25,cmd:'STITCH',lap:8},{dx:-25,dy:0,cmd:'STITCH',lap:8},{dx:0,dy:-25,cmd:'STITCH',lap:8},{dx:0,dy:0,cmd:'FOOT_UP',lap:1},{dx:0,dy:0,cmd:'END',lap:1}],
+  star: makeStar(),
+  label:[{dx:0,dy:0,cmd:'FOOT_DOWN',lap:1},{dx:25,dy:0,cmd:'STITCH',lap:3},{dx:-25,dy:0,cmd:'STITCH',lap:3},{dx:25,dy:0,cmd:'STITCH',lap:16},{dx:0,dy:25,cmd:'STITCH',lap:8},{dx:-25,dy:0,cmd:'STITCH',lap:16},{dx:0,dy:-25,cmd:'STITCH',lap:8},{dx:25,dy:0,cmd:'STITCH',lap:3},{dx:0,dy:0,cmd:'FOOT_UP',lap:1},{dx:0,dy:0,cmd:'END',lap:1}]
+};
+function parsePattern(txt){
+  const re=/\{\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(STITCH|FOOT_DOWN|FOOT_UP|END)\s*,\s*(\d+)\s*\}/g;
+  const out=[]; let m;
+  while((m=re.exec(txt))){ out.push({dx:+m[1],dy:+m[2],cmd:m[3],lap:Math.max(1,+m[4])}); }
+  if(!out.length) return {err:'Không đọc được dòng nào. Mỗi dòng phải có dạng { 25, 0, STITCH, 8 },'};
+  let ops=0, x=0, y=0, maxX=0, maxY=0, minX=0, minY=0;
+  for(const l of out){ ops+=l.lap; if(l.cmd==='STITCH'){ for(let k=0;k<l.lap;k++){x+=l.dx/10;y+=l.dy/10; minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);} } }
+  if(ops>600) return {err:'Mẫu quá dài. Giữ dưới 600 mũi cho mô phỏng chạy mượt.'};
+  if(maxX-minX>90||maxY-minY>90) return {err:'Mẫu rộng hơn 90 mm, vượt khổ khung kẹp trong mô hình.'};
+  return {lines:out};
+}
+
+// ======================= TRẠNG THÁI MÔ PHỎNG =======================
+const sim = {theta:0, cum:0, running:false, fault:false, done:false, ops:[], lines:[], opIdx:0, move:null,
+  pos:{x:0,y:0}, lastHole:null, wasInWin:false, foot:'up', sol:'hold', solT:0, stopAtTop:false, pauseAt:null,
+  curLine:-1, curK:0, curLap:0, stitches:0, fx:false, fy:false, maxLen:0, motorXRot:0, motorYRot:0, penFlash:0, idxFlash:0};
+const samples = [];
+let replaying = false;
+let spm = 300, vmax = 100, timeScale = 0.1;
+
+// ======================= LOAD THREE =======================
+if(!window.THREE || !THREE.OrbitControls){ $('loadErr').hidden=false; return; }
+
+const stage=$('stage'), canvas=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,1,0.5,800);
+camera.position.set(44,40,70);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.target.set(-2,8,4); controls.enableDamping=true; controls.dampingFactor=0.08;
+controls.maxPolarAngle=Math.PI*0.95; controls.minDistance=8; controls.maxDistance=220;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f99,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(30,60,40); scene.add(sun);
+const fill=new THREE.DirectionalLight(0xffffff,0.25); fill.position.set(-40,20,-30); scene.add(fill);
+
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+let THEMEC={ink:'#1A2230',muted:'#5A6476',line:'#D8DEE7',ok:'#2E7D5B'};
+function applyTheme(){ const c=cssVar('--scene')||'#E6EAF0'; scene.background=new THREE.Color(c);
+  THEMEC={ink:cssVar('--ink')||THEMEC.ink,muted:cssVar('--muted')||THEMEC.muted,line:cssVar('--line')||THEMEC.line,ok:cssVar('--ok')||THEMEC.ok}; drawLA(); }
+
+const std=(c,r=0.6,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const M={
+  body:std(0xE8EBEE,0.45), bodyAccent:std(0x3A4250,0.6), metal:std(0xB8C0CB,0.35,0.55), dark:std(0x2A2F37,0.55),
+  table:std(0xC8A57A,0.85), pcbBlue:std(0x1F5FA8,0.6), pcbGreen:std(0x1E7A57,0.6), driver:std(0x6B4FC6,0.5),
+  chip:std(0x121418,0.5), fabric:std(0x3D5A8A,0.95), clamp:std(0x9DA6B2,0.4,0.5), thread:new THREE.MeshStandardMaterial({color:0xF2C14E,roughness:0.5,emissive:0x5a3d00,emissiveIntensity:0.35}),
+  needle:std(0xD9DEE5,0.25,0.8), red:std(0xD64545,0.5), led:new THREE.MeshBasicMaterial({color:0x334155}), coil:std(0xB8742A,0.5,0.3)
+};
+const shellMats=[M.body,M.bodyAccent];
+
+function box(w,h,d,mat,x,y,z,parent){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z); (parent||scene).add(m); return m; }
+function cyl(r,h,mat,parent,rt){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt==null?r:rt,r,h,28),mat); (parent||scene).add(m); return m; }
+const UP=new THREE.Vector3(0,1,0), V=(x,y,z)=>new THREE.Vector3(x,y,z);
+function placeBetween(mesh,a,b){ const d=new THREE.Vector3().subVectors(b,a); const len=d.length(); mesh.position.copy(a).addScaledVector(d,0.5); mesh.scale.set(1,Math.max(len,1e-4),1); if(len>1e-6) mesh.quaternion.setFromUnitVectors(UP,d.normalize()); }
+const roots={};
+function tag(obj,key){ obj.traverse(o=>{o.userData.part=key;}); roots[key]=roots[key]||obj; return obj; }
+
+// ---------- Bàn và thân máy ----------
+box(114,1,42,M.table,3,-0.5,3);
+const body=new THREE.Group(); scene.add(body);
+box(54,2,18,M.body,-1,1,-1,body);
+box(8,22,10,M.body,18,13,-1,body);
+box(46,6,9,M.body,-1,25,-1,body);
+box(8,16,9,M.body,-22,20,-1,body);
+box(8.2,1,9.2,M.bodyAccent,-22,27.6,-1,body);
+box(5,0.06,4,M.metal,-22,2.03,NZ,body);
+tag(body,'body');
+
+// ---------- Trục chính + tay quay ----------
+const shaftG=new THREE.Group(); shaftG.position.set(0,25,-1); scene.add(shaftG);
+{ const s=cyl(0.5,52.4,M.metal,shaftG); s.rotation.z=Math.PI/2; s.position.x=1.2;
+  box(5,0.25,1.1,M.red,6,0.55,0,shaftG);
+  const disk=cyl(1.7,0.6,M.dark,shaftG); disk.rotation.z=Math.PI/2; disk.position.x=-25.2;
+  const pin=cyl(0.3,1.2,M.metal,shaftG); pin.rotation.z=Math.PI/2; pin.position.set(-24.6,2.2,0); }
+const link=cyl(0.28,1,M.metal); tag(shaftG,'shaft'); tag(link,'shaft');
+
+// ---------- Trụ kim + kim ----------
+const needleG=new THREE.Group(); needleG.position.set(NX,0,NZ); scene.add(needleG);
+const needleMat=M.needle.clone();
+{ const nd=cyl(0.03,3,needleMat,needleG,0.11); nd.position.y=1.5;
+  box(0.9,0.7,0.9,M.dark,0,3.25,0,needleG);
+  const bar=cyl(0.36,8,M.metal,needleG); bar.position.y=7.6; }
+tag(needleG,'needle');
+const tipDot=new THREE.Mesh(new THREE.SphereGeometry(0.17,14,10),new THREE.MeshBasicMaterial({color:0x2E9E6B})); scene.add(tipDot);
+const tipRing=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.05,8,32),new THREE.MeshBasicMaterial({color:0x2E9E6B})); tipRing.rotation.x=Math.PI/2; scene.add(tipRing);
+
+// ---------- Ổ chao ----------
+const hook=new THREE.Group(); hook.position.set(NX,0.95,NZ); scene.add(hook);
+{ cyl(1.3,0.5,M.metal,hook); box(0.5,0.55,1.2,M.red,0,0,1.1,hook); }
+tag(hook,'hook');
+
+// ---------- Vô lăng + miếng chắn ----------
+const wheelG=new THREE.Group(); wheelG.position.set(26.2,25,-1); scene.add(wheelG);
+{ const w=cyl(5,1.4,M.bodyAccent,wheelG); w.rotation.z=Math.PI/2;
+  const p=cyl(3.4,0.9,M.dark,wheelG); p.rotation.z=Math.PI/2; p.position.x=-1.15;
+  box(1.5,9,0.6,M.body,0,0,0,wheelG);
+  box(0.3,1.0,0.9,M.chip,0,5.45,0,wheelG); }
+tag(wheelG,'wheel');
+
+// ---------- Cảm biến chữ U ----------
+const sensorG=new THREE.Group(); scene.add(sensorG);
+box(0.4,1.3,1.4,M.chip,25.45,30.8,-1,sensorG); box(0.4,1.3,1.4,M.chip,26.95,30.8,-1,sensorG);
+box(1.9,0.4,1.4,M.pcbGreen,26.2,31.65,-1,sensorG);
+box(0.6,3.8,0.8,M.metal,21.6,29.9,-1,sensorG); box(3.6,0.3,0.8,M.metal,23.4,31.65,-1,sensorG);
+const sensLed=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,8),M.led.clone()); sensLed.position.set(26.2,31.95,-0.4); sensorG.add(sensLed);
+tag(sensorG,'usensor');
+
+// ---------- Encoder ----------
+const encG=new THREE.Group(); scene.add(encG);
+{ const b=cyl(1.8,2,M.dark,encG); b.rotation.z=Math.PI/2; b.position.set(29.6,25,-1);
+  box(0.4,3.4,7,M.metal,30.8,25,-3.3,encG); box(8.6,0.6,0.6,M.metal,26.4,25,-6.8,encG); }
+const coupling=new THREE.Group(); coupling.position.set(27.7,25,-1); scene.add(coupling);
+{ const c=cyl(0.55,1.4,M.metal,coupling); c.rotation.z=Math.PI/2; box(0.3,1.3,0.3,M.red,0,0,0.45,coupling); }
+tag(encG,'encoder'); tag(coupling,'encoder');
+
+// ---------- Motor servo dưới bàn ----------
+const servoG=new THREE.Group(); scene.add(servoG);
+{ const m=cyl(3.2,10,M.bodyAccent,servoG); m.rotation.z=Math.PI/2; m.position.set(18.6,-5.5,-1);
+  box(5,2,4,M.dark,18.6,-2.3,-1,servoG);
+  const pl=cyl(1.2,0.8,M.metal,servoG); pl.rotation.z=Math.PI/2; pl.position.set(25,-5.5,-1);
+  const b1=cyl(0.22,1,M.chip,servoG), b2=cyl(0.22,1,M.chip,servoG);
+  placeBetween(b1,V(25,-5.5,0.2),V(25,25,2.4)); placeBetween(b2,V(25,-5.5,-2.2),V(25,25,-4.4)); }
+tag(servoG,'servo');
+
+// ---------- Chân vịt + solenoid ----------
+const footG=new THREE.Group(); footG.position.set(NX,FAB_Y+1.3,NZ+0.9); scene.add(footG);
+{ const b=cyl(0.22,9,M.metal,footG); b.position.y=4.65; box(1.7,0.16,2,M.metal,0,0.08,-0.7,footG); }
+tag(footG,'foot');
+const solG=new THREE.Group(); scene.add(solG);
+{ box(2.4,3,2.4,M.coil,NX,15.2,-6.9,solG); box(2.6,0.3,2.6,M.dark,NX,16.85,-6.9,solG); }
+const plunger=cyl(0.35,2.4,M.metal); plunger.position.set(NX,12.9,-6.9);
+const lever=cyl(0.16,1,M.metal);
+tag(solG,'solenoid'); tag(plunger,'solenoid'); tag(lever,'solenoid');
+
+// ---------- Ray X–Y ----------
+const RAIL_Z=20;
+const gantry=new THREE.Group(); scene.add(gantry);
+box(42,0.6,1.8,M.metal,-25,0.3,RAIL_Z,gantry); box(42,0.12,0.4,M.chip,-25,0.66,RAIL_Z+1.1,gantry);
+const carriage=box(3.4,2.2,3,M.metal,-22,1.1,RAIL_Z,gantry);
+const armY=box(1.2,0.4,1,M.metal,-22,2.35,RAIL_Z-4,gantry);
+tag(gantry,'gantry');
+const motorXG=new THREE.Group(); scene.add(motorXG);
+box(2.8,2.8,2.8,M.dark,-47.6,1.4,RAIL_Z,motorXG); box(2.9,0.5,2.9,M.metal,-47.6,2.55,RAIL_Z,motorXG);
+const pullX=new THREE.Group(); pullX.position.set(-46,1.4,RAIL_Z); motorXG.add(pullX);
+{ const p=cyl(0.6,0.9,M.metal,pullX); p.rotation.z=Math.PI/2; p.position.x=0.4; box(0.2,1.3,0.2,M.red,0.4,0,0,pullX); }
+tag(motorXG,'motorX');
+const motorYG=new THREE.Group(); scene.add(motorYG);
+box(2.4,2.4,2.4,M.dark,0,1.2,0,motorYG); box(2.5,0.45,2.5,M.metal,0,2.2,0,motorYG);
+const pullY=new THREE.Group(); pullY.position.set(0,1.2,-1.4); motorYG.add(pullY);
+{ const p=cyl(0.55,0.8,M.metal,pullY); p.rotation.x=Math.PI/2; box(1.2,0.2,0.2,M.red,0,0,0,pullY); }
+tag(motorYG,'motorY');
+
+// ---------- Khung kẹp + vải ----------
+const frameG=new THREE.Group(); scene.add(frameG);
+let frameParts=null, stitchG=null, holeG=null, ghost=null, fabCenter={x:0,z:0}, frameSize=16;
+function buildFrame(lines){
+  if(frameParts){ frameG.remove(frameParts); }
+  frameParts=new THREE.Group(); frameG.add(frameParts);
+  let x=0,y=0,minX=0,maxX=0,minY=0,maxY=0; const pts=[V(0,FAB_Y+0.05,0)];
+  for(const l of lines){ if(l.cmd!=='STITCH') continue; for(let k=0;k<l.lap;k++){ x+=l.dx/10; y+=l.dy/10; pts.push(V(x*S,FAB_Y+0.05,-y*S)); minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);} }
+  fabCenter={x:(minX+maxX)/2*S, z:-(minY+maxY)/2*S};
+  frameSize=Math.max(14, Math.max(maxX-minX,maxY-minY)*S+7);
+  const F=frameSize, h=F/2;
+  const fab=box(F-0.6,0.08,F-0.6,M.fabric,fabCenter.x,FAB_Y-0.04,fabCenter.z,frameParts);
+  box(F,0.35,0.6,M.clamp,fabCenter.x,FAB_Y+0.1,fabCenter.z-h,frameParts);
+  box(F,0.35,0.6,M.clamp,fabCenter.x,FAB_Y+0.1,fabCenter.z+h,frameParts);
+  box(0.6,0.35,F,M.clamp,fabCenter.x-h,FAB_Y+0.1,fabCenter.z,frameParts);
+  box(0.6,0.35,F,M.clamp,fabCenter.x+h,FAB_Y+0.1,fabCenter.z,frameParts);
+  const g=new THREE.BufferGeometry().setFromPoints(pts);
+  ghost=new THREE.Line(g,new THREE.LineDashedMaterial({color:0xF2C14E,dashSize:0.25,gapSize:0.25,transparent:true,opacity:0.75}));
+  ghost.computeLineDistances(); frameParts.add(ghost);
+  stitchG=new THREE.Group(); holeG=new THREE.Group(); frameParts.add(stitchG); frameParts.add(holeG);
+  tag(frameParts,'frame'); roots.frame=frameParts;
+}
+const stitchGeo=new THREE.CylinderGeometry(0.07,0.07,1,8), holeGeo=new THREE.SphereGeometry(0.09,8,6);
+function addStitch(a,b){ const m=new THREE.Mesh(stitchGeo,M.thread); placeBetween(m,V(a.x*S,FAB_Y+0.07,-a.y*S),V(b.x*S,FAB_Y+0.07,-b.y*S)); m.userData.part='frame'; stitchG.add(m); }
+function addHole(p){ const m=new THREE.Mesh(holeGeo,M.chip); m.position.set(p.x*S,FAB_Y+0.05,-p.y*S); m.userData.part='frame'; holeG.add(m); }
+
+// ---------- Bo mạch ----------
+const boardG=new THREE.Group(); scene.add(boardG);
+box(6.9,0.16,5.3,M.pcbBlue,38,0.55,13,boardG); box(1.4,1,1.7,M.metal,34.3,0.9,14.3,boardG);
+box(5,0.75,0.25,M.chip,38,1.05,10.6,boardG); box(5,0.75,0.25,M.chip,38,1.05,15.4,boardG);
+box(6.9,0.16,5.3,M.pcbGreen,38,1.5,13,boardG); box(1.3,0.8,1.1,std(0x0F5A3F),41,1.95,11.1,boardG);
+const boardLed=new THREE.Mesh(new THREE.SphereGeometry(0.18,10,8),M.led.clone()); boardLed.position.set(35.6,1.65,11.4); boardG.add(boardLed);
+tag(boardG,'board');
+const drvG=new THREE.Group(); scene.add(drvG);
+for(const x of [36.4,38.6]){ box(1.5,0.5,2,M.driver,x,1.85,13.4,drvG); box(1,0.6,1,M.metal,x,2.4,13.4,drvG); }
+tag(drvG,'drivers');
+const mosG=new THREE.Group(); scene.add(mosG);
+box(4,0.15,2.6,M.pcbGreen,46,0.35,13,mosG); for(let i=0;i<4;i++) box(0.6,0.8,0.25,M.chip,44.6+i*0.95,0.85,12.4,mosG);
+box(3.6,0.5,0.6,std(0x1C6E9E),46,0.65,14,mosG);
+tag(mosG,'mosfet');
+const powG=new THREE.Group(); scene.add(powG);
+box(9,2.6,5,M.metal,40,1.3,4.5,powG); box(9.1,0.6,1,M.chip,40,0.6,7.1,powG); box(2.6,0.5,1.4,M.pcbBlue,46.6,0.35,8,powG);
+tag(powG,'power');
+
+// ---------- Dây và tín hiệu ----------
+function wire(pts,color,r=0.12){ const c=new THREE.CatmullRomCurve3(pts); const m=new THREE.Mesh(new THREE.TubeGeometry(c,64,r,6,false),new THREE.MeshStandardMaterial({color,roughness:0.6})); scene.add(m); return c; }
+const W={
+  enc: wire([V(36,1.7,11),V(34.5,7,5),V(32,20,0.5),V(30.6,24.4,-1.5)],COL.enc),
+  idx: wire([V(36.6,1.7,10.9),V(35,10,3),V(30,30,1),V(27,32,-1)],COL.idx),
+  sx:  wire([V(35,1.7,12),V(32,0.6,19.5),V(0,0.4,23),V(-32,0.4,23),V(-46.5,1.6,21.4)],COL.sx),
+  solA:wire([V(40.6,1.7,13.6),V(43,2.4,14.2),V(44.8,0.6,13.2)],COL.sol),
+  solB:wire([V(47.6,0.6,13.3),V(48,7,6),V(30,33,-10),V(0,31,-9.5),V(-19,18,-8.4),V(-22,16.9,-7.8)],COL.sol),
+  pw1: wire([V(43.5,1.4,7.1),V(42.6,2.6,9),V(41,2.2,11.1)],COL.pow),
+  pw2: wire([V(44.5,1,6.6),V(46,1,7.2),V(46.6,0.7,8)],COL.pow),
+  pw3: wire([V(46.6,0.7,8.7),V(47,0.8,10.8),V(46.8,0.5,12)],COL.pow)
+};
+const yCurve=new THREE.CatmullRomCurve3([V(35.5,1.7,13.8),V(32,0.6,21.4),V(-20,0.6,22.6),V(-19,1.6,21.2)]);
+const yLineGeo=new THREE.BufferGeometry(); yLineGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(41*3),3));
+const yLine=new THREE.Line(yLineGeo,new THREE.LineBasicMaterial({color:COL.sy})); scene.add(yLine);
+
+const pGeo=new THREE.SphereGeometry(0.3,10,8), pool=[];
+for(let i=0;i<180;i++){ const m=new THREE.Mesh(pGeo,new THREE.MeshBasicMaterial({color:0xffffff})); m.visible=false; scene.add(m); pool.push({m,on:false}); }
+function emit(curve,color,rev,dur){ if(replaying) return; const p=pool.find(q=>!q.on); if(!p) return; p.on=true; p.c=curve; p.t=0; p.d=dur||0.9; p.rev=rev; p.m.material.color.set(color); p.m.visible=true; }
+function updParticles(dt){ for(const p of pool){ if(!p.on) continue; p.t+=dt/p.d; if(p.t>=1){p.on=false;p.m.visible=false;continue;} p.c.getPoint(p.rev?1-p.t:p.t,p.m.position); } }
+
+// ======================= NHÃN =======================
+const LBL=[
+  ['needle','Kim',()=>V(NX,needleG.position.y+6,NZ+1.4)],
+  ['wheel','Vô lăng',()=>V(26.2,18.6,4.5)],
+  ['usensor','Cảm biến chữ U',()=>V(26.2,33.2,-1)],
+  ['encoder','Encoder',()=>V(30,27.4,-1)],
+  ['solenoid','Solenoid',()=>V(NX,17.6,-6.9)],
+  ['frame','Khung kẹp vải',()=>V(frameG.position.x+fabCenter.x-frameSize/2,FAB_Y+0.8,frameG.position.z+fabCenter.z+frameSize/2)],
+  ['motorX','Motor X',()=>V(-47.6,3.6,RAIL_Z)],
+  ['motorY','Motor Y',()=>V(motorYG.position.x,3.3,motorYG.position.z)],
+  ['board','Arduino + CNC Shield',()=>V(38,2.9,13)],
+  ['drivers','Driver A4988',()=>V(37.5,3.2,15.2)],
+  ['mosfet','MOSFET',()=>V(46,1.4,13)],
+  ['power','Nguồn 24V',()=>V(40,3.2,4.5)],
+  ['servo','Motor servo (dưới bàn)',()=>V(14,-1.4,-1)],
+  ['hook','Ổ chao',()=>V(NX-2.6,1.2,NZ+1.6),'xray'],
+  ['shaft','Trục chính',()=>V(4,26.4,-1),'xray']
+];
+const lblWrap=$('labels'), lblEls=LBL.map(l=>{ const d=document.createElement('div'); d.className='lbl'; d.textContent=l[1]; lblWrap.appendChild(d); return d; });
+const tmpV=new THREE.Vector3();
+function updLabels(w,h){
+  const show=$('showLbl').checked, xr=$('xray').checked;
+  LBL.forEach((l,i)=>{ const el=lblEls[i]; if(!show||(l[3]==='xray'&&!xr)){el.hidden=true;return;}
+    tmpV.copy(l[2]()).project(camera);
+    if(tmpV.z>1||tmpV.x<-1.1||tmpV.x>1.1||tmpV.y<-1.1||tmpV.y>1.1){el.hidden=true;return;}
+    el.hidden=false; el.style.left=((tmpV.x+1)/2*w)+'px'; el.style.top=((1-tmpV.y)/2*h)+'px'; el.classList.toggle('sel',l[0]===selKey); });
+}
+
+// ======================= THÔNG TIN BỘ PHẬN =======================
+const INFO={
+  board:['Arduino Uno + CNC Shield','Bộ não chạy firmware. Ngắt timer chạy 8000 lần mỗi giây: đọc góc kim, kiểm tra cửa sổ đã mở chưa, lấy dòng tiếp theo trong file mẫu, chia xung STEP cho X và Y. Nếu cửa sổ đóng mà khung chưa tới nơi thì dừng và báo lỗi.','ISR(TIMER1_COMPA_vect) và loadNext()'],
+  encoder:['Encoder 600 xung','Gắn đồng trục 1:1 với vô lăng. Hai kênh A và B lệch pha nhau nên đọc được cả chiều quay. Giải mã cả 4 cạnh xung được 2400 đếm mỗi vòng, tức 0,15° mỗi đếm.','ISR(PCINT0_vect): encPos cộng trừ theo bảng QDEC\nChân D9 (A), D10 (B)'],
+  usensor:['Cảm biến quang chữ U','Mỗi lần miếng chắn trên vô lăng đi qua khe, cảm biến báo về chân A0. Firmware ép góc về 0°, xóa sai số đếm tích lũy, và từ lúc đó mới cho chạy mẫu.','ISR(PCINT1_vect): encPos = IDX_C; homed = true;'],
+  wheel:['Vô lăng','Gắn ở đầu trục chính, có rãnh puly cho dây đai của motor servo. Trên vành có miếng chắn nhỏ đặt đúng vị trí lúc kim lên cao nhất.',''],
+  shaft:['Trục chính và tay quay','Motor servo quay trục chính. Tay quay ở đầu trục biến chuyển động tròn thành chuyển động lên xuống của trụ kim. Một vòng trục là một mũi may.','Bật "Nhìn xuyên vỏ máy" để thấy trục bên trong'],
+  needle:['Kim và trụ kim','Ở 0° kim lên cao nhất. Khoảng 75° mũi kim chạm vải, 180° xuống thấp nhất rồi rút lên. Khung vải chỉ được dịch trong cửa sổ từ 300° qua 0° tới 60°, lúc kim còn ở trên vải.','WIN_START = 300, WIN_END = 60'],
+  hook:['Ổ chao','Nằm dưới mặt bàn máy, quay 2 vòng cho mỗi vòng trục kim để móc chỉ trên với chỉ suốt tạo mũi khóa. Phần này hoàn toàn cơ khí, firmware không điều khiển.',''],
+  servo:['Motor servo của máy','Motor có sẵn dưới bàn, có hộp điều khiển riêng, quay trục kim theo bàn đạp. Bo Arduino không điều khiển motor này và không nối dây vào hộp của nó vì bên trong có 310V.',''],
+  foot:['Chân vịt','Ép vải xuống khi may. Solenoid nâng chân vịt lên qua cần đẩy, nhả ra thì lò xo ép xuống.','Lệnh FOOT_DOWN và FOOT_UP trong file mẫu'],
+  solenoid:['Solenoid chân vịt','Cuộn hút 12V. Khi nâng: cấp 100% trong 50 ms để hút mạnh, sau đó giữ ở khoảng 31% cho cuộn dây không nóng. Có diode 1N4007 mắc ngược để dập xung khi ngắt.','footUp(): analogWrite(PIN_SOL, 255) rồi analogWrite(PIN_SOL, 80)'],
+  frame:['Khung kẹp vải và vải','Khung kẹp chặt vải và được bàn X–Y kéo đi. Kim đứng yên một chỗ, vải dịch bên dưới. Đường chỉ vàng là các mũi đã may, nét đứt là mẫu sắp may.','Vị trí khung = tổng các dx, dy đã chạy trong PATTERN'],
+  gantry:['Ray và xe trượt X–Y','Ray X chạy ngang trước bàn máy. Xe trượt mang motor Y và cánh tay nối với khung. Máy thật dùng ray dẫn hướng và dây đai GT2 hoặc vít me.','STEPS_PER_MM = 80'],
+  motorX:['Motor bước trục X','Nhận dòng điện từ driver A4988. Mỗi xung STEP quay 1/3200 vòng (vi bước 1/16), kéo xe trượt sang trái hoặc phải.','PORTD |= _BV(2)  // xung STEP X ở chân D2'],
+  motorY:['Motor bước trục Y','Đi theo xe trượt, đẩy khung ra vào. Khi mũi chéo, firmware chia xung cho X và Y theo thuật toán Bresenham để đường may thẳng.','PORTD |= _BV(3)  // xung STEP Y ở chân D3'],
+  drivers:['Driver A4988','Tầng công suất cho motor bước. Nhận xung STEP và DIR 5V từ Arduino, cấp dòng khoảng 0,75–1A từ nguồn 24V cho cuộn dây motor.','Chỉnh dòng bằng biến trở: Vref khoảng 0,6V'],
+  mosfet:['Mạch MOSFET cách ly','Chân D11 của Arduino chỉ cho ra vài mA. Mạch này nhận tín hiệu PWM qua opto cách ly rồi đóng cắt dòng 600 mA cho solenoid.','PIN_SOL = 11'],
+  power:['Nguồn 24V và hạ áp 12V','Nguồn tổ ong 24V cấp cho driver motor bước. Mạch LM2596 hạ xuống 12V cho solenoid. Arduino lấy điện từ cáp USB của laptop.',''],
+  body:['Thân máy may','Phần cơ khí có sẵn của máy 1 kim: bàn máy, cột, cánh tay và đầu máy. Bật "Nhìn xuyên vỏ máy" để thấy trục chính, tay quay và ổ chao.','']
+};
+const CHIP_ORDER=['board','encoder','usensor','needle','frame','motorX','motorY','drivers','solenoid','mosfet','foot','wheel','shaft','hook','servo','power'];
+let selKey=null; const selBox=new THREE.BoxHelper(undefined,0xF2C14E); selBox.visible=false; scene.add(selBox);
+const chipsEl=$('chips');
+CHIP_ORDER.forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='btn sm'; b.textContent=INFO[k][0]; b.dataset.k=k; b.addEventListener('click',()=>select(k)); chipsEl.appendChild(b); });
+function select(k){
+  selKey=k; const inf=INFO[k];
+  $('infoTitle').textContent=inf[0]; $('infoText').textContent=inf[1]; $('infoText').className='';
+  const ic=$('infoCode'); if(inf[2]){ic.hidden=false; ic.textContent=inf[2];} else ic.hidden=true;
+  chipsEl.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===k?'true':'false'));
+  if(roots[k]){ selBox.setFromObject(roots[k]); selBox.visible=true; }
+}
+
+// ======================= MÔ PHỎNG =======================
+function expand(lines){ const ops=[]; lines.forEach((l,li)=>{ for(let k=0;k<l.lap;k++) ops.push({dx:l.dx,dy:l.dy,cmd:l.cmd,li,k,lap:l.lap}); }); return ops; }
+function loadPattern(lines){
+  sim.lines=lines; sim.ops=expand(lines);
+  sim.maxLen=Math.max(0,...sim.ops.filter(o=>o.cmd==='STITCH').map(o=>Math.hypot(o.dx,o.dy)/10));
+  buildFrame(lines); renderPatView(); resetSim(); updTiming();
+}
+function resetSim(){
+  sim.theta=0; sim.cum=0; samples.length=0; sim.running=false; sim.fault=false; sim.done=false; sim.opIdx=0; sim.move=null;
+  sim.pos={x:0,y:0}; sim.lastHole=null; sim.wasInWin=false; sim.foot='up'; sim.sol='hold'; sim.solT=0;
+  sim.stopAtTop=false; sim.pauseAt=null; sim.curLine=-1; sim.stitches=0;
+  if(stitchG){ while(stitchG.children.length) stitchG.remove(stitchG.children[0]); while(holeG.children.length) holeG.remove(holeG.children[0]); }
+  needleMat.color.set(0xD9DEE5); setRunBtn(); highlightLine();
+}
+function loadNext(){
+  if(sim.opIdx>=sim.ops.length){ sim.stopAtTop=true; return; }
+  const op=sim.ops[sim.opIdx++]; sim.curLine=op.li; sim.curK=op.k; sim.curLap=op.lap; highlightLine();
+  if(op.cmd==='STITCH'){
+    const dx=op.dx/10, dy=op.dy/10, len=Math.hypot(dx,dy);
+    sim.stitches++;
+    sim.move = len>0 ? {fx:sim.pos.x,fy:sim.pos.y,dx,dy,len,done:0} : null;
+  } else if(op.cmd==='FOOT_DOWN'){ sim.foot='down'; sim.sol='off'; }
+  else if(op.cmd==='FOOT_UP'){ sim.foot='up'; sim.sol='kick'; sim.solT=0; emit(W.solA,COL.sol,false,0.5); if(!replaying) setTimeout(()=>emit(W.solB,COL.sol,false,1.2),400); }
+  else { sim.stopAtTop=true; }
+}
+function substep(dDeg,dt){
+  const prev=sim.theta; let th=prev+dDeg, wrapped=false;
+  if(th>=360){th-=360; wrapped=true;}
+  sim.theta=th; sim.cum+=dDeg; sim.fx=false; sim.fy=false;
+  if(wrapped){ sim.idxFlash=0.25; emit(W.idx,COL.idx,true,0.8); if(sim.stopAtTop){ sim.theta=0; sim.running=false; sim.stopAtTop=false; sim.done=true; setRunBtn(); record(); return; } }
+  const iw=inWindow(th);
+  if(iw && !sim.wasInWin && !sim.move && !sim.done) loadNext();
+  if(iw && sim.move){
+    const m=sim.move; m.done+=vmax*dt; const f=Math.min(1,m.done/m.len);
+    const nx=m.fx+m.dx*f, ny=m.fy+m.dy*f;
+    sim.motorXRot+=(nx-sim.pos.x)*0.9; sim.motorYRot+=(ny-sim.pos.y)*0.9;
+    sim.pos.x=nx; sim.pos.y=ny; sim.fx=m.dx!==0; sim.fy=m.dy!==0;
+    if(f>=1){ sim.pos.x=m.fx+m.dx; sim.pos.y=m.fy+m.dy; sim.move=null; }
+  }
+  if(!iw && sim.wasInWin && sim.move){ sim.fault=true; sim.running=false; needleMat.color.set(0xD64545); setRunBtn(); }
+  if(!wrapped && prev<PEN && th>=PEN && sim.foot==='down' && !sim.fault){
+    const p={x:sim.pos.x,y:sim.pos.y};
+    if(sim.lastHole && Math.hypot(p.x-sim.lastHole.x,p.y-sim.lastHole.y)>0.01) addStitch(sim.lastHole,p);
+    if(!sim.lastHole || Math.hypot(p.x-sim.lastHole.x,p.y-sim.lastHole.y)>0.01) addHole(p);
+    sim.lastHole=p; sim.penFlash=0.15;
+  }
+  sim.wasInWin=iw;
+  if(sim.sol==='kick'){ sim.solT+=dt*1000; if(sim.solT>=SOL_KICK_MS) sim.sol='hold'; }
+  if(sim.pauseAt!=null && sim.cum>=sim.pauseAt){ sim.running=false; sim.pauseAt=null; setRunBtn(); }
+  record();
+}
+function record(){
+  const th=sim.theta;
+  samples.push({c:sim.cum,a:Math.floor(th/7.5)%2,idx:(th>=356||th<=4)?1:0,win:inWindow(th)?1:0,sx:sim.fx?1:0,sy:sim.fy?1:0,sol:sim.sol==='kick'?1:sim.sol==='hold'?0.45:0});
+  if(samples.length>4000){ const lim=sim.cum-740; let cut=0; while(cut<samples.length && samples[cut].c<lim) cut++; if(cut) samples.splice(0,cut); }
+}
+function simulate(realDt){
+  if(!sim.running) return;
+  const dt=realDt*timeScale, dDeg=spm/60*360*dt;
+  const n=Math.max(1,Math.ceil(dDeg/0.5)), sd=dDeg/n, st=dt/n;
+  for(let i=0;i<n && sim.running;i++) substep(sd,st);
+}
+
+// ======================= CẬP NHẬT HÌNH 3D =======================
+const COS_PEN=Math.cos(PEN*Math.PI/180);
+let footY=FAB_Y+1.3, plY=12.9, acc={enc:0,sx:0,sy:0,hold:0};
+function updScene(dt){
+  const t=sim.theta*Math.PI/180;
+  shaftG.rotation.x=t; wheelG.rotation.x=t; coupling.rotation.x=t; hook.rotation.y=2*t;
+  const tipY=FAB_Y+A*(Math.cos(t)-COS_PEN);
+  needleG.position.y=tipY;
+  const above=tipY>=FAB_Y, tc=above?0x2E9E6B:0xE04848;
+  tipDot.position.set(NX,tipY,NZ); tipDot.material.color.set(tc); tipDot.visible=above;
+  tipRing.position.set(NX,FAB_Y+0.09,NZ); tipRing.material.color.set(tc);
+  placeBetween(link,V(-24.6,25+2.2*Math.cos(t),-1+2.2*Math.sin(t)),V(NX,tipY+11.6,NZ));
+  const fx=NX-sim.pos.x*S, fz=NZ+sim.pos.y*S;
+  frameG.position.set(fx,0,fz);
+  const cx=fx+fabCenter.x, front=fz+fabCenter.z+frameSize/2;
+  carriage.position.x=cx; motorYG.position.set(cx+3.2,0,RAIL_Z);
+  const aLen=Math.max(0.2,(RAIL_Z-1.5)-front); armY.position.set(cx,2.35,front+aLen/2); armY.scale.z=aLen;
+  pullX.rotation.x=sim.motorXRot; pullY.rotation.z=sim.motorYRot;
+  footY+=((sim.foot==='down'?FAB_Y+0.1:FAB_Y+1.3)-footY)*Math.min(1,dt*10); footG.position.y=footY;
+  plY+=((sim.sol==='off'?12.4:13.3)-plY)*Math.min(1,dt*14); plunger.position.y=plY;
+  placeBetween(lever,V(NX,plY-1.2,-6.9),V(NX,footY+9.15,NZ+0.9));
+  sim.idxFlash=Math.max(0,sim.idxFlash-dt); sensLed.material.color.set(sim.idxFlash>0?0xFF4FB8:0x334155);
+  boardLed.material.color.set(sim.running?((performance.now()/250|0)%2?0x7CFF9E:0x2C7A4B):0x334155);
+  // Dây motor Y đi theo xe trượt
+  yCurve.points[2].set(cx+3.2,0.6,22.6); yCurve.points[3].set(cx+3.2,1.6,RAIL_Z+1.2);
+  const arr=yLineGeo.attributes.position.array; for(let i=0;i<=40;i++){ yCurve.getPoint(i/40,tmpV); arr[i*3]=tmpV.x;arr[i*3+1]=tmpV.y;arr[i*3+2]=tmpV.z; }
+  yLineGeo.attributes.position.needsUpdate=true; yLineGeo.computeBoundingSphere();
+  // Hạt tín hiệu
+  if(sim.running){ acc.enc+=dt; if(acc.enc>0.16){acc.enc=0; emit(W.enc,COL.enc,true,0.7);} }
+  if(sim.fx){ acc.sx+=dt; if(acc.sx>0.07){acc.sx=0; emit(W.sx,COL.sx,false,1.1);} }
+  if(sim.fy){ acc.sy+=dt; if(acc.sy>0.07){acc.sy=0; emit(yCurve,COL.sy,false,1.0);} }
+  if(sim.sol==='hold' && sim.running){ acc.hold+=dt; if(acc.hold>0.6){acc.hold=0; emit(W.solB,COL.sol,false,1.4);} }
+  updParticles(dt);
+  if(selBox.visible && roots[selKey]) selBox.setFromObject(roots[selKey]);
+}
+
+// ======================= BẢNG ĐIỀU KHIỂN =======================
+function setRunBtn(){ $('btnRun').textContent=sim.running?'Tạm dừng':'Chạy'; }
+$('btnRun').addEventListener('click',()=>{
+  if(sim.fault||sim.done){ resetSim(); }
+  sim.running=!sim.running; sim.pauseAt=null; setRunBtn();
+});
+$('btnStep').addEventListener('click',()=>{ if(sim.fault||sim.done) resetSim(); sim.pauseAt=sim.cum+360; sim.running=true; setRunBtn(); });
+$('btnReset').addEventListener('click',()=>{ resetSim(); });
+$('spm').addEventListener('input',e=>{ spm=+e.target.value; $('spmOut').textContent=spm+' mũi/phút'; updTiming(); });
+$('vmax').addEventListener('input',e=>{ vmax=+e.target.value; $('vmaxOut').textContent=vmax+' mm/s'; updTiming(); });
+$('slow').addEventListener('change',e=>{ timeScale=+e.target.value; });
+$('xray').addEventListener('change',e=>{ shellMats.forEach(m=>{ m.transparent=e.target.checked; m.opacity=e.target.checked?0.18:1; m.depthWrite=!e.target.checked; m.needsUpdate=true; }); });
+function updTiming(){
+  const need=sim.maxLen/vmax*1000, win=(120/360)*(60/spm)*1000, ok=need<=win;
+  const nf=n=>n.toLocaleString('vi-VN',{maximumFractionDigits:1});
+  $('timing').className='timing'+(ok?'':' bad');
+  $('timing').textContent=`Mũi dài nhất ${nf(sim.maxLen)} mm cần ${nf(need)} ms để dịch (${(vmax*STEPS_PER_MM).toLocaleString('vi-VN')} bước/giây). Cửa sổ mở ${nf(win)} ms mỗi vòng. `+(ok?'Kịp, an toàn.':'Không kịp: máy sẽ báo lỗi, ngoài đời là gãy kim.');
+}
+function renderPatView(){
+  const v=$('patView'); v.innerHTML='';
+  sim.lines.forEach((l,i)=>{ const d=document.createElement('div'); d.dataset.i=i;
+    const c=document.createElement('span'); c.textContent=fmtLine(l); const r=document.createElement('span'); r.className='rep'; d.append(c,r); v.appendChild(d); });
+}
+let lastHi=-2;
+function highlightLine(){
+  const v=$('patView'); if(!v) return;
+  v.querySelectorAll('div').forEach(d=>{ const on=+d.dataset.i===sim.curLine; d.classList.toggle('on',on); d.lastChild.textContent=on&&sim.curLap>1?`mũi ${sim.curK+1}/${sim.curLap}`:''; });
+  if(sim.curLine!==lastHi){ lastHi=sim.curLine; const el=v.querySelector('div.on'); if(el){ const top=el.offsetTop-v.offsetTop; if(top<v.scrollTop||top>v.scrollTop+v.clientHeight-20) v.scrollTop=top-40; } }
+}
+$('patSel').addEventListener('change',e=>{ const L=PATTERNS[e.target.value]; $('patText').value=patternText(L); $('patErr').textContent=''; loadPattern(L); });
+$('btnEdit').addEventListener('click',()=>{ const b=$('editBox'); b.hidden=!b.hidden; $('btnEdit').setAttribute('aria-pressed',String(!b.hidden)); if(!b.hidden&&!$('patText').value) $('patText').value=patternText(sim.lines); });
+$('patText').addEventListener('input',()=>{ $('patErr').textContent=''; });
+$('btnLoad').addEventListener('click',()=>{ const r=parsePattern($('patText').value); if(r.err){ $('patErr').textContent=r.err; return; } $('patErr').textContent=''; loadPattern(r.lines); });
+
+// Đồng hồ góc
+function pt(deg,r){ const a=deg*Math.PI/180; return [75+r*Math.sin(a),75-r*Math.cos(a)]; }
+function arc(a1,a2,r){ const s=pt(a1,r), e=pt(a2,r); let sweep=(a2-a1+360)%360; return `M${s[0].toFixed(2)} ${s[1].toFixed(2)} A${r} ${r} 0 ${sweep>180?1:0} 1 ${e[0].toFixed(2)} ${e[1].toFixed(2)}`; }
+$('arcWin').setAttribute('d',arc(WIN_START,WIN_END,58));
+$('arcUnder').setAttribute('d',arc(PEN,360-PEN,58));
+{ const p=pt(PEN,58); $('penDot').setAttribute('cx',p[0].toFixed(2)); $('penDot').setAttribute('cy',p[1].toFixed(2)); }
+const phaseEls=[...document.querySelectorAll('#phases li')];
+function phaseOf(th){ if(th>=355||th<=5) return 'p1'; if(inWindow(th)) return 'p2'; if(th<150) return 'p3'; if(th<=210) return 'p4'; return 'p5'; }
+let uiT=0;
+function updUI(dt){
+  const h=pt(sim.theta,48); $('hand').setAttribute('x2',h[0].toFixed(2)); $('hand').setAttribute('y2',h[1].toFixed(2));
+  uiT+=dt; if(uiT<0.08) return; uiT=0;
+  $('dialDeg').textContent=Math.round(sim.theta)+'°';
+  const deg=Math.round(sim.theta)%360; $('dial').setAttribute('aria-valuenow',deg); $('angOut').textContent=deg+'°';
+  if(performance.now()-angTouched>300) $('ang').value=deg;
+  renderNow();
+  const ph=phaseOf(sim.theta); phaseEls.forEach(li=>li.classList.toggle('on',li.dataset.p===ph));
+  const st=$('status');
+  if(sim.fault){ st.className='status fault'; st.textContent='Lỗi: cửa sổ đã đóng mà khung chưa dịch xong. Kim sắp cắm xuống khi vải còn chạy. Giảm tốc độ máy, tăng tốc độ motor, hoặc rút ngắn mũi, rồi bấm Về đầu mẫu.'; }
+  else if(sim.done){ st.className='status done'; st.textContent=`Xong mẫu: ${sim.stitches} mũi. Bấm Chạy để may lại.`; }
+  else { st.className='status'; const iw=inWindow(sim.theta);
+    st.textContent=(sim.running?'Đang chạy · ':'Tạm dừng · ')+(iw?(sim.move?'cửa sổ mở, khung đang dịch':'cửa sổ mở, khung đã tới nơi'):'kim dưới vải, khung đứng yên')+` · mũi ${sim.stitches}`; }
+  highlightLine();
+}
+
+// ======================= LOGIC ANALYZER =======================
+const la=$('la'), lctx=la.getContext('2d');
+const ROWS=[['a','Encoder A',COL.enc,'bin'],['idx','Mốc kim',COL.idx,'bin'],['win','Cửa sổ',null,'band'],['sx','STEP X',COL.sx,'burst'],['sy','STEP Y',COL.sy,'burst'],['sol','Solenoid',COL.sol,'level']];
+function stripes(color){ const c=document.createElement('canvas'); c.width=4; c.height=4; const x=c.getContext('2d'); x.fillStyle=color; x.fillRect(0,0,2,4); return lctx.createPattern(c,'repeat'); }
+let pat=null;
+function drawLA(){
+  const dpr=Math.min(window.devicePixelRatio||1,2), W=la.clientWidth, H=la.clientHeight;
+  if(!W) return;
+  if(la.width!==Math.round(W*dpr)||la.height!==Math.round(H*dpr)){ la.width=Math.round(W*dpr); la.height=Math.round(H*dpr); }
+  if(!pat) pat={sx:stripes(COL.sx),sy:stripes(COL.sy)};
+  const ctx=lctx; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const ink=THEMEC.ink, muted=THEMEC.muted, line=THEMEC.line, okc=THEMEC.ok;
+  const x0=W<520?78:100, x1=W-8, top=6, rowH=(H-top-18)/ROWS.length, c1=sim.cum, c0=c1-720, X=c=>x0+(c-c0)/720*(x1-x0);
+  ctx.font='11.5px "Be Vietnam Pro", system-ui, sans-serif'; ctx.textBaseline='middle';
+  // nền cửa sổ
+  ctx.fillStyle=okc; ctx.globalAlpha=0.10;
+  let runStart=null; for(let i=0;i<samples.length;i++){ const s=samples[i]; if(s.win&&runStart===null) runStart=s.c; if((!s.win||i===samples.length-1)&&runStart!==null){ ctx.fillRect(X(Math.max(runStart,c0)),top,X(s.c)-X(Math.max(runStart,c0)),rowH*ROWS.length); runStart=null; } }
+  ctx.globalAlpha=1;
+  // vạch 0°
+  const base=c1-sim.theta; ctx.strokeStyle=line; ctx.lineWidth=1; ctx.fillStyle=muted; ctx.textAlign='center';
+  for(let k=0;k<3;k++){ const c=base-k*360; if(c<c0) continue; const x=X(c); ctx.beginPath(); ctx.moveTo(x,top); ctx.lineTo(x,top+rowH*ROWS.length); ctx.stroke(); ctx.fillText('0°',x,H-8); }
+  ROWS.forEach((r,ri)=>{
+    const yT=top+ri*rowH+5, yB=top+(ri+1)*rowH-5;
+    ctx.textAlign='left'; ctx.fillStyle=ink; ctx.fillText(r[1],4,(yT+yB)/2);
+    ctx.strokeStyle=line; ctx.beginPath(); ctx.moveTo(x0,top+(ri+1)*rowH); ctx.lineTo(x1,top+(ri+1)*rowH); ctx.stroke();
+    if(r[3]==='band'){ ctx.strokeStyle=okc; ctx.lineWidth=1.6; drawBin(ctx,'win',yT,yB,X,c0); ctx.lineWidth=1; return; }
+    if(r[3]==='burst'){
+      ctx.strokeStyle=r[2]; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x0,yB); ctx.lineTo(x1,yB); ctx.stroke();
+      ctx.fillStyle=pat[r[0]]; let s0=null;
+      for(let i=0;i<samples.length;i++){ const s=samples[i]; if(s[r[0]]&&s0===null) s0=s.c; if((!s[r[0]]||i===samples.length-1)&&s0!==null){ const a=X(Math.max(s0,c0)), b=X(s.c); ctx.fillRect(a,yT,Math.max(1.5,b-a),yB-yT); s0=null; } }
+      ctx.lineWidth=1; return; }
+    ctx.strokeStyle=r[2]; ctx.lineWidth=1.6; drawBin(ctx,r[0],yT,yB,X,c0); ctx.lineWidth=1;
+  });
+}
+function drawBin(ctx,key,yT,yB,X,c0){
+  ctx.beginPath(); let started=false, py=0;
+  for(const s of samples){ if(s.c<c0) continue; const x=X(s.c), y=yB-(yB-yT)*s[key];
+    if(!started){ ctx.moveTo(x,y); started=true; } else { if(y!==py) ctx.lineTo(x,py); ctx.lineTo(x,y); } py=y; }
+  ctx.stroke();
+}
+
+// ======================= CAMERA, CHỌN BỘ PHẬN =======================
+const CAMS={camAll:[[44,40,70],[-2,8,4]],camNeedle:[[-8,13,22],[-22,3.5,3]],camWheel:[[46,34,18],[27,25,-1]],camBoard:[[56,22,34],[40,1,11]]};
+let fly=null;
+Object.keys(CAMS).forEach(id=>$(id).addEventListener('click',()=>{ fly={t:0,p0:camera.position.clone(),t0:controls.target.clone(),p1:V(...CAMS[id][0]),t1:V(...CAMS[id][1])}; }));
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2(); let downAt=null;
+function pick(e){ const r=canvas.getBoundingClientRect(); mouse.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(mouse,camera);
+  for(const h of ray.intersectObjects(scene.children,true)){ if(!h.object.visible) continue; const k=h.object.userData.part; if(k) return k; } return null; }
+canvas.addEventListener('pointerdown',e=>{ downAt=[e.clientX,e.clientY]; });
+canvas.addEventListener('pointerup',e=>{ if(!downAt) return; const d=Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1]); downAt=null; if(d<5){ const k=pick(e); if(k) select(k); } });
+let hoverT=0; canvas.addEventListener('pointermove',e=>{ const n=performance.now(); if(n-hoverT<80||e.buttons) return; hoverT=n; canvas.style.cursor=pick(e)?'pointer':'grab'; });
+
+// ======================= VÒNG LẶP =======================
+function resize(){ const w=stage.clientWidth, h=stage.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); drawLA(); }
+new ResizeObserver(resize).observe(stage);
+new ResizeObserver(()=>drawLA()).observe(la);
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  simulate(dt); updScene(dt); updUI(dt);
+  if(fly){ fly.t=Math.min(1,fly.t+dt/0.7); const k=1-Math.pow(1-fly.t,3); camera.position.lerpVectors(fly.p0,fly.p1,k); controls.target.lerpVectors(fly.t0,fly.t1,k); if(fly.t>=1) fly=null; }
+  controls.update(); renderer.render(scene,camera);
+  updLabels(stage.clientWidth,stage.clientHeight);
+  drawLA();
+  requestAnimationFrame(frame);
+}
+
+// ======================= QUAY KIM BẰNG TAY =======================
+let angTouched=0;
+function seek(target){
+  target=Math.max(0,target);
+  sim.running=false; sim.pauseAt=null;
+  if(target<sim.cum-1e-6 || sim.fault || sim.done) resetSim();
+  const degPerSec=spm/60*360;
+  replaying=true;
+  while(sim.cum<target-1e-9 && !sim.fault && !sim.done){ const d=Math.min(0.5,target-sim.cum); substep(d,d/degPerSec); }
+  replaying=false;
+  sim.running=false; setRunBtn(); uiT=1; updUI(0);
+}
+function scrubTo(a){ let d=a-sim.theta; if(d>180) d-=360; if(d<-180) d+=360; seek(sim.cum+d); }
+function focusNeedle(){
+  const tgt=V(...CAMS.camNeedle[1]);
+  if(controls.target.distanceTo(tgt)>4) fly={t:0,p0:camera.position.clone(),t0:controls.target.clone(),p1:V(...CAMS.camNeedle[0]),t1:tgt};
+  if(selKey!=='needle') select('needle');
+}
+const dialEl=$('dial'); let dialDrag=false;
+function dialAngle(e){ const p=dialEl.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; const q=p.matrixTransform(dialEl.getScreenCTM().inverse()); let a=Math.atan2(q.x-75,-(q.y-75))*180/Math.PI; return a<0?a+360:a; }
+dialEl.addEventListener('pointerdown',e=>{ dialDrag=true; try{dialEl.setPointerCapture(e.pointerId);}catch(_){} focusNeedle(); scrubTo(dialAngle(e)); e.preventDefault(); });
+dialEl.addEventListener('pointermove',e=>{ if(dialDrag) scrubTo(dialAngle(e)); });
+['pointerup','pointercancel'].forEach(ev=>dialEl.addEventListener(ev,()=>{ dialDrag=false; }));
+dialEl.addEventListener('keydown',e=>{ const s=e.shiftKey?10:1; let d=0;
+  if(e.key==='ArrowRight'||e.key==='ArrowUp') d=s; else if(e.key==='ArrowLeft'||e.key==='ArrowDown') d=-s; else return;
+  e.preventDefault(); focusNeedle(); seek(sim.cum+d); });
+$('ang').addEventListener('pointerdown',()=>focusNeedle());
+$('ang').addEventListener('input',e=>{ angTouched=performance.now(); focusNeedle(); seek(sim.cum-sim.theta+(+e.target.value)); });
+$('bk5').addEventListener('click',()=>{ focusNeedle(); seek(sim.cum-5); });
+$('fw5').addEventListener('click',()=>{ focusNeedle(); seek(sim.cum+5); });
+$('bkRev').addEventListener('click',()=>{ focusNeedle(); seek(sim.cum-360); });
+$('fwRev').addEventListener('click',()=>{ focusNeedle(); seek(sim.cum+360); });
+document.querySelectorAll('.keys button').forEach(b=>b.addEventListener('click',()=>{ focusNeedle(); scrubTo(+b.dataset.a); }));
+
+const f1=n=>n.toLocaleString('vi-VN',{maximumFractionDigits:1});
+function renderNow(){
+  const th=sim.theta, iw=inWindow(th), m=sim.move;
+  const enc=Math.round(th*2400/360)%2400;
+  const tip=15.5*(Math.cos(th*Math.PI/180)-COS_PEN);   // hành trình kim máy thật khoảng 31 mm
+  const major=m?Math.max(Math.abs(m.dx),Math.abs(m.dy))*STEPS_PER_MM:0;
+  const left=m?Math.max(0,Math.round(major*(1-m.done/m.len))):0;
+  const axes=m?[m.dx?'X':null,m.dy?'Y':null].filter(Boolean).join(' và '):'';
+  const np=$('nowNeedle');
+  if(tip>=0){ np.className='needle-pos above'; np.textContent=`Mũi kim cao hơn mặt vải ${f1(tip)} mm`; }
+  else { np.className='needle-pos below'; np.textContent=`Kim đã xuyên qua vải ${f1(-tip)} mm`; }
+  let what=''; const code=[];
+  if(sim.fault){
+    what='Lỗi: cửa sổ đã đóng mà khung chưa tới nơi. Firmware ngừng phát xung và báo lỗi. Ngoài đời kim sẽ đâm vào vải đang chạy và gãy.';
+    code.push('ISR(TIMER1_COMPA_vect):','  !inWin && wasInWin && stepLeft > 0','  → stepLeft = 0; running = false; event = EV_FAULT;');
+  } else if(sim.done){
+    what='Đã may xong mẫu. Máy dừng ở vị trí kim cao nhất.';
+    code.push('loadNext(): gặp lệnh END','  → running = false; event = EV_END;');
+  } else {
+    if(th>=356||th<=4) code.push('ISR(PCINT1_vect): miếng chắn vào khe cảm biến chữ U','  → encPos = IDX_C;  homed = true;');
+    else code.push(`ISR(PCINT0_vect): encPos = ${enc}   (mỗi đếm 0,15°)`);
+    if(iw){
+      if(th>=300&&th<308&&sim.curLine>=0) code.push(`loadNext(): cửa sổ vừa mở, đọc dòng ${sim.curLine}`,'  '+fmtLine(sim.lines[sim.curLine]));
+      if(m){ code.push(`ISR(TIMER1_COMPA_vect): inWin = true, stepLeft = ${left}`,`  → phát xung STEP ${axes}  (PORTD |= …)`);
+        what='Kim ở trên vải, cửa sổ đang mở. Khung đang dịch tới vị trí mũi tiếp theo.'; }
+      else { code.push('ISR(TIMER1_COMPA_vect): inWin = true, stepLeft = 0','  → mũi này đã dịch xong, không phát xung');
+        what='Kim ở trên vải, cửa sổ đang mở. Khung đã tới vị trí mới và đứng chờ kim xuống.'; }
+      if(th>=356||th<=4) what='Kim lên cao nhất, cảm biến chữ U báo mốc 0°. '+what;
+    } else {
+      code.push('ISR(TIMER1_COMPA_vect): inWin = false','  → không phát xung, khung đứng yên');
+      if(th<PEN) what='Cửa sổ vừa đóng. Khung phải đứng yên trước khi mũi kim chạm vải ở 75°.';
+      else if(th<PEN+6) what='Đúng lúc này mũi kim chạm và đâm thủng vải, tạo lỗ cho mũi mới.';
+      else if(th<150) what='Kim đang đâm xuyên vải. Khung đứng yên, firmware chỉ đếm xung encoder.';
+      else if(th<=210) what='Kim xuống thấp nhất. Ổ chao móc vòng chỉ trên để tạo mũi khóa. Việc này hoàn toàn cơ khí.';
+      else what='Kim rút lên, cần giật chỉ kéo chặt mũi vừa may. Tới 300° cửa sổ mở và loadNext() đọc dòng tiếp theo trong mẫu.';
+    }
+    if(sim.foot==='up' && sim.opIdx===0) what+=' Mẫu chưa bắt đầu: lệnh đầu tiên FOOT_DOWN sẽ chạy khi cửa sổ mở.';
+  }
+  if(sim.sol==='kick') code.push('footUp(): analogWrite(PIN_SOL, 255)  // đá 50 ms');
+  $('nowWhat').textContent=what; $('nowCode').textContent=code.join('\n');
+  const solTxt=sim.sol==='kick'?'255 (đá)':sim.sol==='hold'?'80 (giữ)':'0 (nhả)';
+  const rows=[['encPos',`${enc}  (${Math.round(th)%360}°)`],['inWin',iw?'true':'false'],['stepLeft',String(left)],
+    ['dòng mẫu',sim.curLine>=0?`pIdx = ${sim.curLine}, pRep = ${sim.curK+1}/${sim.curLap}`:'chưa đọc'],
+    ['PIN_SOL',solTxt],['chân vịt',sim.foot==='down'?'hạ, ép vải':'nâng'],
+    ['vị trí khung',`X ${f1(sim.pos.x)} mm, Y ${f1(sim.pos.y)} mm`]];
+  $('nowVars').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('');
+}
+
+// Khởi động
+$('patText').value=patternText(PATTERNS.square);
+loadPattern(PATTERNS.square);
+applyTheme(); resize();
+select('board');
+if(!reduceMotion){ sim.running=true; setRunBtn(); }
+requestAnimationFrame(frame);
+})();
+</script>

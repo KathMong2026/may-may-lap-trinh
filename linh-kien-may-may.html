@@ -1,0 +1,233 @@
+<title>Giỏ linh kiện xưởng may</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: phiếu mua hàng xưởng may, mỗi món một dòng có hình vẽ, giá và ô "đã có" */
+:root{
+  --bg:#F3F5F8; --card:#FFFFFF; --ink:#1B2433; --muted:#5B6577; --line:#DCE1E9;
+  --denim:#2F4A7A; --denim-soft:#E3E9F4; --tag:#F2C14E; --tag-ink:#5A4200;
+  --ok:#2E7D5B; --ok-soft:#E2F2EA; --later:#8A5A00; --later-soft:#FBF0D9;
+  --pcb:#2E7D6B; --pcb-soft:#D6EDE6; --metal:#AEB6C2;
+  --f-body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161D; --card:#1A2029; --ink:#E6EAF1; --muted:#9AA4B5; --line:#2C3441;
+  --denim:#8FAEE6; --denim-soft:#223049; --tag:#E0B23F; --tag-ink:#2A1F00;
+  --ok:#6CC79C; --ok-soft:#1C3329; --later:#E7B75C; --later-soft:#33280F;
+  --pcb:#5FBFA7; --pcb-soft:#1D332E; --metal:#6B7483; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161D; --card:#1A2029; --ink:#E6EAF1; --muted:#9AA4B5; --line:#2C3441;
+  --denim:#8FAEE6; --denim-soft:#223049; --tag:#E0B23F; --tag-ink:#2A1F00;
+  --ok:#6CC79C; --ok-soft:#1C3329; --later:#E7B75C; --later-soft:#33280F;
+  --pcb:#5FBFA7; --pcb-soft:#1D332E; --metal:#6B7483; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:clamp(26px,4.5vw,36px);line-height:1.2;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:19px;margin:0;font-weight:700;text-wrap:balance}
+p{margin:0}
+.lead{color:var(--muted);max-width:64ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--denim)}
+header{display:flex;flex-direction:column;gap:10px}
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.sum{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.sum b{font-family:var(--f-mono);font-size:22px;font-variant-numeric:tabular-nums;font-weight:600}
+.sum span{color:var(--muted);font-size:13px}
+.sum.now b{color:var(--denim)}
+.sum.later b{color:var(--later)}
+.sum.have b{color:var(--ok)}
+.note{background:var(--denim-soft);border-radius:10px;padding:12px 16px;font-size:14px}
+section{display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;flex-direction:column;gap:2px}
+.sec-head p{color:var(--muted);font-size:14px}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:16px;align-items:start;transition:opacity .2s}
+.item.owned{opacity:.55}
+.item.owned .name{text-decoration:line-through;text-decoration-color:var(--muted)}
+.pic{width:96px;height:72px;border-radius:8px;background:var(--bg);display:grid;place-items:center;color:var(--ink)}
+.pic svg{width:84px;height:63px}
+.body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.name{font-weight:600;font-size:16px}
+.chip{font-size:12px;border-radius:999px;padding:1px 9px;font-weight:500;white-space:nowrap}
+.chip.now{background:var(--denim-soft);color:var(--denim)}
+.chip.later{background:var(--later-soft);color:var(--later)}
+.chip.shop{background:var(--ok-soft);color:var(--ok)}
+.why{color:var(--muted);font-size:14px}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.links a{font-size:13px;color:var(--denim);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;background:var(--card)}
+.links a:hover{border-color:var(--denim)}
+.links a.cn{color:var(--later);background:var(--later-soft);border-color:var(--later-soft)}
+.links a.cn:hover{border-color:var(--later)}
+.kw{font-size:13px;color:var(--muted)}
+.kw span{color:var(--ink);user-select:all;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif}
+.links a:focus-visible,.own input:focus-visible+span{outline:2px solid var(--denim);outline-offset:2px}
+.side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;min-width:110px}
+.price{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:15px;white-space:nowrap}
+.price small{display:block;text-align:right;font-weight:400;font-size:11px;color:var(--muted)}
+.own{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;user-select:none;color:var(--muted)}
+.own input{width:18px;height:18px;accent-color:var(--ok);margin:0;cursor:pointer}
+.warn{border-left:3px solid var(--tag);border-radius:0;padding:4px 0 4px 14px;font-size:14px;color:var(--muted);max-width:70ch}
+footer{color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:620px){
+  .summary{grid-template-columns:1fr}
+  .item{grid-template-columns:72px minmax(0,1fr);gap:12px}
+  .pic{width:72px;height:56px}.pic svg{width:64px;height:48px}
+  .side{grid-column:1 / -1;flex-direction:row;justify-content:space-between;align-items:center;min-width:0;border-top:1px dashed var(--line);padding-top:8px}
+  .price small{text-align:left;display:inline;margin-left:6px}
+}
+@media (prefers-reduced-motion:reduce){.item{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Bộ thí nghiệm · giai đoạn 1–2</span>
+    <h1>Giỏ linh kiện cho bo điều khiển máy may</h1>
+    <p class="lead">Danh sách để tự lắp một bo điều khiển, tự lập trình và xem motor, cảm biến, solenoid chạy ra sao trước khi gắn lên máy thật. Món nào xưởng đã có thì tích "Đã có", tổng tiền sẽ tự trừ ra.</p>
+  </header>
+
+  <div class="summary" aria-live="polite">
+    <div class="sum now"><b id="sumNow">0₫</b><span>Cần mua ngay (khoảng)</span></div>
+    <div class="sum later"><b id="sumLater">0₫</b><span>Mua sau, khi qua giai đoạn 2</span></div>
+    <div class="sum have"><b id="sumHave">0 món</b><span>Xưởng đã có, khỏi mua</span></div>
+  </div>
+
+  <p class="note">Hình trên trang là hình vẽ minh họa để bạn dễ nhận ra món đồ. Bấm vào tên shop để xem ảnh chụp thật, giá và tình trạng còn hàng. Giá ghi "ước tính" là mình đoán theo mặt bằng chung. Giá ghi "giá shop" là giá đọc được trên trang bán lúc tìm, có thể đã thay đổi.</p>
+
+  <p class="note">Nút màu vàng (Taobao, 1688) mở trang tìm kiếm sẵn từ khóa tiếng Trung của món đó, không phải một shop cố định. Chọn shop nhiều lượt bán và đánh giá tốt. Có thể phải đăng nhập mới xem được kết quả. Nếu nhờ dịch vụ order hàng Trung Quốc, chỉ cần gửi họ link sản phẩm bạn chọn hoặc từ khóa tiếng Trung bên dưới mỗi món.</p>
+
+  <section id="have"></section>
+  <section id="now"></section>
+  <section id="later"></section>
+
+  <p class="warn">Không nối bất cứ dây nào của bộ này vào bo nguồn hay hộp điều khiển của motor servo máy may. Bên trong đó có điện 310V. Bộ thí nghiệm chỉ chạy 5V, 12V và 24V từ nguồn tổ ong riêng. Encoder và cảm biến quang chỉ gắn cơ khí lên trục máy, không đụng tới điện của máy.</p>
+
+  <footer>
+    <p>Shop trong danh sách: icdayroi.com, nshopvn.com, hshop.vn, thegioiic.com, banlinhkien.com. Đều có cửa hàng ở TP.HCM hoặc Hà Nội và giao hàng toàn quốc. Có thể tìm cùng tên sản phẩm trên Shopee để so giá.</p>
+    <p>Ô "Đã có" chỉ được lưu trong trình duyệt của bạn.</p>
+  </footer>
+</div>
+
+<script>
+const ART = {
+ uno:`<rect x="8" y="10" width="64" height="42" rx="3" fill="var(--pcb-soft)" stroke="var(--pcb)" stroke-width="1.5"/><rect x="4" y="16" width="14" height="10" rx="1" fill="var(--metal)"/><rect x="5" y="34" width="10" height="9" rx="1" fill="var(--ink)"/><rect x="36" y="26" width="26" height="8" rx="1" fill="var(--ink)"/><g fill="var(--ink)"><rect x="26" y="12" width="40" height="3"/><rect x="34" y="47" width="32" height="3"/></g>`,
+ shield:`<rect x="6" y="10" width="68" height="44" rx="3" fill="var(--pcb-soft)" stroke="var(--pcb)" stroke-width="1.5"/><g fill="var(--denim)"><rect x="12" y="18" width="12" height="16" rx="1"/><rect x="28" y="18" width="12" height="16" rx="1"/><rect x="44" y="18" width="12" height="16" rx="1"/><rect x="60" y="18" width="10" height="16" rx="1"/></g><g stroke="var(--metal)" stroke-width="1.2"><path d="M14 22h8M14 26h8M14 30h8M30 22h8M30 26h8M30 30h8M46 22h8M46 26h8M46 30h8"/></g><rect x="12" y="42" width="20" height="7" rx="1" fill="var(--ok)"/>`,
+ motor:`<rect x="18" y="8" width="44" height="44" rx="5" fill="var(--metal)" stroke="var(--ink)" stroke-width="1.5"/><circle cx="40" cy="30" r="11" fill="var(--card)" stroke="var(--ink)" stroke-width="1.5"/><circle cx="40" cy="30" r="3" fill="var(--ink)"/><g fill="var(--ink)"><circle cx="24" cy="14" r="2"/><circle cx="56" cy="14" r="2"/><circle cx="24" cy="46" r="2"/><circle cx="56" cy="46" r="2"/></g><path d="M62 40c8 2 10 8 14 12" fill="none" stroke="var(--denim)" stroke-width="2"/>`,
+ psu:`<rect x="6" y="12" width="68" height="38" rx="2" fill="var(--metal)" stroke="var(--ink)" stroke-width="1.5"/><g fill="var(--ink)" opacity=".55">${Array.from({length:24},(_,i)=>`<circle cx="${14+(i%8)*7}" cy="${20+Math.floor(i/8)*7}" r="1.6"/>`).join('')}</g><rect x="10" y="40" width="60" height="7" rx="1" fill="var(--ink)"/><g fill="var(--tag)"><rect x="13" y="42" width="5" height="3"/><rect x="22" y="42" width="5" height="3"/><rect x="31" y="42" width="5" height="3"/><rect x="40" y="42" width="5" height="3"/><rect x="49" y="42" width="5" height="3"/></g>`,
+ buck:`<rect x="12" y="16" width="56" height="30" rx="2" fill="var(--denim-soft)" stroke="var(--denim)" stroke-width="1.5"/><circle cx="30" cy="31" r="8" fill="var(--ink)"/><circle cx="30" cy="31" r="4" fill="var(--metal)"/><rect x="46" y="22" width="12" height="10" rx="1" fill="var(--denim)"/><circle cx="52" cy="27" r="2" fill="var(--tag)"/><rect x="44" y="36" width="16" height="6" rx="1" fill="var(--ink)"/>`,
+ encoder:`<circle cx="36" cy="30" r="20" fill="var(--ink)"/><circle cx="36" cy="30" r="14" fill="var(--metal)"/><rect x="33" y="4" width="6" height="14" rx="1" fill="var(--metal)" stroke="var(--ink)"/><path d="M54 38c8 4 12 8 20 8" fill="none" stroke="var(--ink)" stroke-width="3"/><g fill="var(--ink)"><circle cx="22" cy="30" r="1.5"/><circle cx="50" cy="30" r="1.5"/></g>`,
+ usensor:`<rect x="10" y="38" width="60" height="14" rx="2" fill="var(--pcb-soft)" stroke="var(--pcb)" stroke-width="1.5"/><path d="M26 38V14h10v24M44 38V14h10v24" fill="var(--ink)"/><path d="M38 22h4" stroke="var(--tag)" stroke-width="2" stroke-dasharray="2 2"/><circle cx="62" cy="45" r="2.5" fill="var(--tag)"/>`,
+ mosfet:`<rect x="6" y="24" width="68" height="28" rx="2" fill="var(--pcb-soft)" stroke="var(--pcb)" stroke-width="1.5"/><g fill="var(--ink)"><rect x="12" y="10" width="11" height="18" rx="1"/><rect x="28" y="10" width="11" height="18" rx="1"/><rect x="44" y="10" width="11" height="18" rx="1"/><rect x="60" y="10" width="10" height="18" rx="1"/></g><g fill="var(--metal)"><circle cx="17.5" cy="14" r="2"/><circle cx="33.5" cy="14" r="2"/><circle cx="49.5" cy="14" r="2"/><circle cx="65" cy="14" r="2"/></g><g fill="var(--ok)"><rect x="12" y="40" width="10" height="7"/><rect x="28" y="40" width="10" height="7"/><rect x="44" y="40" width="10" height="7"/><rect x="60" y="40" width="10" height="7"/></g>`,
+ solenoid:`<rect x="14" y="16" width="36" height="28" rx="2" fill="var(--metal)" stroke="var(--ink)" stroke-width="1.5"/><g stroke="var(--later)" stroke-width="2"><path d="M20 18v24M26 18v24M32 18v24M38 18v24M44 18v24"/></g><rect x="50" y="26" width="22" height="8" rx="2" fill="var(--ink)"/><path d="M60 20l8 0M64 16l4 4-4 4" fill="none" stroke="var(--denim)" stroke-width="2"/><path d="M20 44c-2 6-8 8-12 8" fill="none" stroke="var(--ink)" stroke-width="2"/>`,
+ diode:`<path d="M6 30h68" stroke="var(--metal)" stroke-width="2.5"/><rect x="26" y="22" width="28" height="16" rx="3" fill="var(--ink)"/><rect x="46" y="22" width="5" height="16" fill="var(--metal)"/>`,
+ breadboard:`<rect x="4" y="12" width="72" height="38" rx="2" fill="var(--card)" stroke="var(--ink)" stroke-width="1.5"/><path d="M4 30h72" stroke="var(--line)" stroke-width="3"/><g fill="var(--muted)">${Array.from({length:44},(_,i)=>`<rect x="${8+(i%11)*6}" y="${[16,22,35,41][Math.floor(i/11)]}" width="2" height="2"/>`).join('')}</g><path d="M14 18c6-10 18-10 24 0" fill="none" stroke="var(--later)" stroke-width="2"/><path d="M44 42c6-10 14-10 20 0" fill="none" stroke="var(--denim)" stroke-width="2"/>`,
+ analyzer:`<rect x="10" y="20" width="36" height="22" rx="3" fill="var(--ink)"/><rect x="2" y="27" width="10" height="8" rx="1" fill="var(--metal)"/><g stroke-width="2" fill="none"><path d="M46 24c10 0 14-12 28-12" stroke="var(--tag)"/><path d="M46 28c10 0 14-6 28-6" stroke="var(--later)"/><path d="M46 32h28" stroke="var(--denim)"/><path d="M46 36c10 0 14 6 28 6" stroke="var(--ok)"/><path d="M46 40c10 0 14 12 28 12" stroke="var(--muted)"/></g>`,
+ nucleo:`<rect x="12" y="4" width="56" height="54" rx="3" fill="var(--card)" stroke="var(--ink)" stroke-width="1.5"/><rect x="12" y="4" width="56" height="14" rx="3" fill="var(--denim-soft)" stroke="var(--ink)" stroke-width="1.5"/><rect x="34" y="0" width="12" height="7" rx="1" fill="var(--metal)"/><rect x="31" y="30" width="18" height="18" rx="1" fill="var(--ink)"/><g fill="var(--ink)"><rect x="14" y="22" width="3" height="32"/><rect x="63" y="22" width="3" height="32"/></g><circle cx="24" cy="12" r="2.5" fill="var(--denim)"/>`,
+ cable:`<path d="M10 44c14-30 40 10 56-20" fill="none" stroke="var(--ink)" stroke-width="3"/><rect x="2" y="40" width="14" height="10" rx="1" fill="var(--metal)" stroke="var(--ink)"/><rect x="62" y="16" width="10" height="10" rx="1" fill="var(--ink)"/><rect x="72" y="18" width="6" height="6" fill="var(--metal)"/>`,
+ tb6600:`<rect x="8" y="12" width="56" height="40" rx="2" fill="var(--ink)"/><g stroke="var(--metal)" stroke-width="2"><path d="M14 12V4M22 12V4M30 12V4M38 12V4M46 12V4M54 12V4"/></g><rect x="16" y="22" width="26" height="10" rx="1" fill="var(--card)"/><g fill="var(--tag)"><rect x="64" y="16" width="10" height="5"/><rect x="64" y="24" width="10" height="5"/><rect x="64" y="32" width="10" height="5"/><rect x="64" y="40" width="10" height="5"/></g><g fill="var(--metal)"><rect x="16" y="38" width="4" height="8"/><rect x="22" y="38" width="4" height="8"/><rect x="28" y="38" width="4" height="8"/></g>`,
+ thermo:`<rect x="8" y="18" width="30" height="26" rx="2" fill="var(--pcb-soft)" stroke="var(--pcb)" stroke-width="1.5"/><rect x="14" y="26" width="12" height="10" fill="var(--ink)"/><path d="M38 31c12 0 14 -14 26 -14" fill="none" stroke="var(--later)" stroke-width="2.5"/><rect x="62" y="10" width="14" height="10" rx="2" fill="var(--metal)" stroke="var(--ink)"/>`,
+ sewing:`<path d="M8 48h64v6H8z" fill="var(--metal)" stroke="var(--ink)"/><path d="M14 48V18c0-6 4-8 10-8h40c4 0 6 2 6 6v6H58v26" fill="var(--card)" stroke="var(--ink)" stroke-width="1.5"/><path d="M62 22v18" stroke="var(--ink)" stroke-width="2"/><path d="M62 40v6" stroke="var(--later)" stroke-width="1.5"/><circle cx="12" cy="24" r="7" fill="var(--denim-soft)" stroke="var(--ink)" stroke-width="1.5"/>`,
+ servo:`<rect x="10" y="14" width="44" height="32" rx="4" fill="var(--metal)" stroke="var(--ink)" stroke-width="1.5"/><g stroke="var(--ink)" opacity=".4"><path d="M16 14v32M22 14v32M28 14v32"/></g><rect x="54" y="24" width="14" height="12" rx="2" fill="var(--ink)"/><rect x="34" y="4" width="28" height="12" rx="2" fill="var(--ink)"/><rect x="38" y="7" width="12" height="6" fill="var(--tag)"/>`,
+ laptop:`<rect x="16" y="8" width="48" height="32" rx="2" fill="var(--denim-soft)" stroke="var(--ink)" stroke-width="1.5"/><path d="M22 18h20M22 24h30M22 30h14" stroke="var(--denim)" stroke-width="2"/><path d="M8 44h64l-4 6H12z" fill="var(--metal)" stroke="var(--ink)"/>`,
+ meter:`<rect x="22" y="4" width="36" height="54" rx="5" fill="var(--tag)" stroke="var(--ink)" stroke-width="1.5"/><rect x="28" y="10" width="24" height="12" rx="1" fill="var(--pcb-soft)" stroke="var(--ink)"/><circle cx="40" cy="36" r="8" fill="var(--ink)"/><path d="M40 36l4-5" stroke="var(--card)" stroke-width="2"/><g fill="var(--ink)"><circle cx="30" cy="51" r="2"/><circle cx="40" cy="51" r="2"/><circle cx="50" cy="51" r="2"/></g>`,
+ iron:`<path d="M6 46L44 22" stroke="var(--metal)" stroke-width="3"/><rect x="42" y="12" width="30" height="12" rx="5" transform="rotate(-32 57 18)" fill="var(--denim)"/><path d="M6 46l-3 3" stroke="var(--later)" stroke-width="2"/>`,
+ air:`<ellipse cx="34" cy="38" rx="28" ry="14" fill="var(--denim-soft)" stroke="var(--ink)" stroke-width="1.5"/><rect x="40" y="10" width="24" height="16" rx="2" fill="var(--metal)" stroke="var(--ink)"/><circle cx="20" cy="22" r="6" fill="var(--card)" stroke="var(--ink)"/><path d="M20 22l3-3" stroke="var(--ink)"/><g fill="var(--ink)"><circle cx="16" cy="54" r="3"/><circle cx="52" cy="54" r="3"/></g>`
+};
+
+const ITEMS = [
+ // Xưởng thường có sẵn
+ {id:"may",g:"have",art:"sewing",name:"Đầu máy may 1 kim công nghiệp",why:"Dùng chính máy trong xưởng để thử: gắn encoder và cảm biến lên trục, không cần mua máy mới. Nên lấy một máy cũ ít dùng làm máy thí nghiệm.",def:true},
+ {id:"servo",g:"have",art:"servo",name:"Motor servo tiết kiệm điện (có dừng kim)",why:"Loại motor gắn dưới bàn máy, có hộp điều khiển riêng. Cứ để nó tự quay trục kim. Bo của bạn chỉ đọc góc kim, không điều khiển motor này.",def:true},
+ {id:"laptop",g:"have",art:"laptop",name:"Laptop Windows",why:"Cài Arduino IDE (miễn phí) để viết và nạp code. Sau này cài thêm STM32CubeIDE.",def:true},
+ {id:"meter",g:"have",art:"meter",name:"Đồng hồ vạn năng",why:"Đo điện áp nguồn, kiểm tra dây đứt. Xưởng có thợ sửa máy thường đã có. Nếu chưa có, loại 150–250 nghìn ở tiệm điện là đủ dùng.",def:false},
+ {id:"iron",g:"have",art:"iron",name:"Mỏ hàn thiếc + thiếc hàn",why:"Hàn dây cho encoder, solenoid và jack cắm. Giai đoạn đầu dùng breadboard nên chưa cần hàn nhiều.",def:false},
+ {id:"air",g:"have",art:"air",name:"Máy nén khí",why:"Chỉ cần khi tới phần kẹp vải bằng khí nén ở giai đoạn sau. Xưởng có máy thổi chỉ hoặc máy ép thì dùng chung được.",def:false},
+
+ // Mua ngay
+ {id:"uno",g:"now",art:"uno",name:"Arduino Uno R3 (kèm cáp USB)",why:"Bộ não đầu tiên, dễ học nhất. Viết code trên laptop, nạp qua cáp USB, chạy liền. Nhiều tài liệu tiếng Việt.",qty:1,price:95000,src:"giá shop",links:[["icdayroi","https://icdayroi.com/arduino-uno-r3-smd"],["nshop","https://nshopvn.com/product/arduino-uno-r3-smd-chip-dan-kem-cap/"]]},
+ {id:"cnc",g:"now",art:"shield",name:"CNC Shield V3 + 3 driver A4988",why:"Board cắm chồng lên Uno, có sẵn chỗ cắm driver cho trục X, Y. Đây là cách nhanh nhất để 2 motor bước chạy được ngay trong ngày đầu.",qty:1,price:150000,src:"ước tính",links:[["icdayroi","https://icdayroi.com/board-cnc-shield-v3-a4988-driver"],["nshop","https://nshopvn.com/product/arduino-cnc-shield-v3/"],["A4988 lẻ","https://icdayroi.com/driver-a4988-stepper-motor"]]},
+ {id:"nema",g:"now",art:"motor",name:"Motor bước NEMA 17 (42×40 mm)",why:"Đóng vai trục X và trục Y của bàn kẹp vải. Cỡ nhỏ, chạy 24V, an toàn để tập. Mua 2 con.",qty:2,price:180000,src:"ước tính",links:[["icdayroi","https://icdayroi.com/step-motor-nema-17-size-42-x-40mm-dong-co-buoc"]]},
+ {id:"psu",g:"now",art:"psu",name:"Nguồn tổ ong 24V 5A",why:"Cấp điện 24V cho motor bước. Cắm điện 220V vào là có 24V ra. Nhớ gắn vỏ che cầu đấu 220V.",qty:1,price:165000,src:"giá shop",links:[["thegioiic","https://www.thegioiic.com/nguon-xung-to-ong-24v-5a-120w"],["icdayroi","https://icdayroi.com/nguon-xung-24v5a-nguon-to-ong"]]},
+ {id:"buck",g:"now",art:"buck",name:"Mạch hạ áp LM2596 (24V xuống 12V)",why:"Lấy 12V từ nguồn 24V để chạy solenoid, khỏi mua thêm nguồn thứ hai. Vặn biến trở và đo bằng đồng hồ cho đúng 12V trước khi nối tải.",qty:1,price:25000,src:"giá shop",links:[["hshop","https://hshop.vn/mach-giamop-dc-lm2596-3a"],["nshop","https://nshopvn.com/product/mach-giam-ap-dc-lm2596-3a/"]]},
+ {id:"enc",g:"now",art:"encoder",name:"Encoder 600 xung LPD3806-600BM",why:"Gắn vào trục máy may (qua puly hoặc khớp nối mềm ở đầu vô lăng) để bo biết kim đang ở góc nào. Đây là cảm biến quan trọng nhất cho bài đồng bộ kim với X–Y.",qty:1,price:250000,src:"ước tính",links:[["thegioiic","https://www.thegioiic.com/lpd3806-600bm-rotary-encoder-600-xung-npn-5-24vdc"]]},
+ {id:"usens",g:"now",art:"usensor",name:"Cảm biến quang chữ U (module FC-03)",why:"Dán một miếng chắn nhỏ lên vô lăng. Mỗi lần miếng chắn đi qua khe là bo biết kim vừa lên tới điểm cao nhất. Dùng làm mốc 0 độ cho encoder.",qty:2,price:15000,src:"ước tính",links:[["thegioiic","https://www.thegioiic.com/fc-03-lm393-mach-cam-bien-toc-do-encoder"]]},
+ {id:"mos",g:"now",art:"mosfet",name:"Mạch MOSFET cách ly 4 kênh PWM",why:"Tầng công suất cho solenoid và van khí. Arduino xuất tín hiệu nhỏ, mạch này đóng cắt dòng lớn. Có cách ly quang nên đỡ nhiễu và an toàn cho bo.",qty:1,price:60000,src:"ước tính",links:[["icdayroi","https://icdayroi.com/mach-mosfet-cach-ly-4-kenh-pwm"],["nshop","https://nshopvn.com/product/mach-mosfet-dong-ngat-cach-ly-4-kenh/"]]},
+ {id:"sol",g:"now",art:"solenoid",name:"Solenoid kéo đẩy 12V EML-0530B",why:"Đóng vai cơ cấu nâng chân vịt hoặc cắt chỉ để tập kỹ thuật 'đá rồi giữ' bằng PWM. Lực 6N, hành trình 10mm, ăn 600mA.",qty:1,price:60000,src:"ước tính",links:[["thegioiic","https://www.thegioiic.com/eml-0530b-khoa-chot-dien-12v"]]},
+ {id:"diode",g:"now",art:"diode",name:"Diode 1N4007 (túi 10 con)",why:"Mắc ngược song song với solenoid để dập xung điện ngược khi ngắt. Thiếu con này rất dễ cháy MOSFET.",qty:1,price:2000,src:"giá shop",links:[["icdayroi","https://icdayroi.com/1n4007-dip"],["banlinhkien","https://banlinhkien.com/diode-1n4007-1a-dip-10c-p16520665.html"]]},
+ {id:"bb",g:"now",art:"breadboard",name:"Breadboard 830 lỗ + bó dây cắm",why:"Cắm thử mạch không cần hàn. Mua thêm 1 bó dây đực-đực và 1 bó dây đực-cái.",qty:1,price:60000,src:"giá shop",links:[["hshop","https://hshop.vn/products/test-board-cammb-102"],["nshop","https://nshopvn.com/product/test-board-bread-board-mb-102-830-lo/"],["dây cắm","https://www.thegioiic.com/bo-day-cam-testboard-65-soi-duc-duc"]]},
+ {id:"la",g:"now",art:"analyzer",name:"Logic analyzer USB 24MHz 8 kênh",why:"Cắm vào laptop để xem tận mắt xung STEP, tín hiệu encoder, PWM dưới dạng sóng. Khi code chạy sai, đây là công cụ tìm lỗi nhanh nhất.",qty:1,price:220000,src:"giá shop",links:[["banlinhkien","https://banlinhkien.com/bo-phan-tich-logic-usb-24mhz-8ch-analyzer-p6647909.html"],["icdayroi","https://icdayroi.com/bo-do-xung-usb-saleae-logic-analyzer-8-kenh-24mhz"]]},
+
+ // Mua sau
+ {id:"nucleo",g:"later",art:"nucleo",name:"Kit STM32 NUCLEO-F411RE",why:"Khi đã quen Arduino (khoảng tháng thứ 3–4). Chip mạnh hơn nhiều, có bộ đếm encoder bằng phần cứng, đúng loại chip máy may công nghiệp hay dùng. Có sẵn mạch nạp, không cần mua thêm.",qty:1,price:810000,src:"giá shop",links:[["hshop","https://hshop.vn/kit-nucleo-f411re-stm32-nucleo-64-development-board-with-stm32f411re-mcu"],["thegioiic","https://www.thegioiic.com/mach-nucleo-stm32f4-f411re-sku-9282"]]},
+ {id:"mini",g:"later",art:"cable",name:"Cáp Mini USB cho NUCLEO",why:"Kit NUCLEO không kèm cáp, phải mua riêng.",qty:1,price:27000,src:"giá shop",links:[["hshop","https://hshop.vn/cap-mini-usb-to-usb-a-2-0-cable-30cm"]]},
+ {id:"tb",g:"later",art:"tb6600",name:"Driver TB6600 4A",why:"Khi lắp bàn X–Y thật lên máy may. Bàn thật nặng hơn nên phải dùng motor NEMA 23, và A4988 không đủ dòng cho loại đó. Mua 2 cái.",qty:2,price:150000,src:"ước tính",links:[["nshop","https://nshopvn.com/product/mach-dieu-khien-dong-co-buoc-tb6600-4-0a-942vdc/"],["icdayroi","https://icdayroi.com/mach-driver-dong-co-buoc-tb6600-4a-42v"]]},
+ {id:"max",g:"later",art:"thermo",name:"Module MAX6675 + đầu dò nhiệt K",why:"Để tập bài đo nhiệt và PID gia nhiệt (dùng cho máy ép nhiệt, máy ép keo), hoặc theo dõi nhiệt độ motor.",qty:1,price:60000,src:"ước tính",links:[["nshop","https://nshopvn.com/product/cam-bien-nhiet-thermocouple-max6675-k-type/"],["icdayroi","https://icdayroi.com/mach-khuech-dai-tin-hieu-max6675-kem-dau-do-nhiet"]]}
+];
+
+const ZH = {
+ meter:"数字万用表", iron:"恒温电烙铁",
+ uno:"Arduino UNO R3 开发板 CH340", cnc:"CNC Shield V3 扩展板 A4988 套件",
+ nema:"42步进电机 1.7A 42x40mm", psu:"24V5A 开关电源 120W", buck:"LM2596 降压模块",
+ enc:"LPD3806-600BM 编码器", usens:"槽型光耦 测速模块 FC-03", mos:"4路 MOS管 光耦隔离 PWM 模块",
+ sol:"推拉式电磁铁 12V 行程10mm", diode:"1N4007 二极管 直插", bb:"面包板 830孔 杜邦线 套装",
+ la:"逻辑分析仪 24M 8通道", nucleo:"NUCLEO-F411RE", mini:"Mini USB 数据线",
+ tb:"TB6600 步进电机驱动器", max:"MAX6675 模块 K型热电偶"
+};
+
+const SECTIONS = {
+ have:{t:"Xưởng thường có sẵn",d:"Tích những món xưởng đang có. Mấy món này không tính vào tổng tiền."},
+ now:{t:"Cần mua ngay",d:"Đủ để làm bài đầu tiên: 2 motor bước chạy theo góc kim đọc từ encoder, cộng 1 solenoid đóng mở."},
+ later:{t:"Mua sau",d:"Chưa cần lúc mới học. Mua khi bắt đầu chuyển sang STM32 hoặc lắp bàn X–Y thật."}
+};
+
+const KEY="giolinhkien-owned-v1";
+let owned={};
+try{owned=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){owned={}}
+ITEMS.forEach(it=>{ if(!(it.id in owned)) owned[it.id]=!!it.def; });
+const fmt=n=>n.toLocaleString("vi-VN")+"₫";
+
+function render(){
+ for(const g of ["have","now","later"]){
+  const s=SECTIONS[g], el=document.getElementById(g);
+  const rows=ITEMS.filter(i=>i.g===g).map(it=>{
+   const chip = g==="have" ? `<span class="chip shop">Xưởng</span>` : g==="now" ? `<span class="chip now">Mua ngay</span>` : `<span class="chip later">Mua sau</span>`;
+   const qty = it.qty>1 ? ` × ${it.qty}` : "";
+   const price = it.price ? `<div class="price">${fmt(it.price*(it.qty||1))}<small>${it.qty>1?fmt(it.price)+"/cái · ":""}${it.src}</small></div>` : `<div class="price"><small>&nbsp;</small></div>`;
+   const vn = (it.links||[]).map(([n,u])=>`<a href="${u}" target="_blank" rel="noopener">${n} ↗</a>`).join("");
+   const zh = ZH[it.id], q = zh ? encodeURIComponent(zh) : "";
+   const cn = zh ? `<a class="cn" href="https://s.taobao.com/search?q=${q}" target="_blank" rel="noopener">Taobao ↗</a><a class="cn" href="https://s.1688.com/selloffer/offer_search.htm?keywords=${q}&charset=utf8" target="_blank" rel="noopener">1688 ↗</a>` : "";
+   const kw = zh ? `<p class="kw">Từ khóa tiếng Trung: <span lang="zh">${zh}</span></p>` : "";
+   const links = (vn||cn) ? `<div class="links">${vn}${cn}</div>${kw}` : "";
+   return `<article class="item${owned[it.id]?" owned":""}" data-id="${it.id}">
+     <div class="pic" aria-hidden="true"><svg viewBox="0 0 80 60">${ART[it.art]}</svg></div>
+     <div class="body"><div class="top"><span class="name">${it.name}${qty}</span>${chip}</div><p class="why">${it.why}</p>${links}</div>
+     <div class="side">${price}<label class="own"><input type="checkbox" id="own-${it.id}" ${owned[it.id]?"checked":""}><span>Đã có</span></label></div>
+   </article>`;
+  }).join("");
+  el.innerHTML=`<div class="sec-head"><h2>${s.t}</h2><p>${s.d}</p></div><div class="list">${rows}</div>`;
+ }
+ totals();
+}
+function totals(){
+ let now=0,later=0,have=0;
+ ITEMS.forEach(it=>{
+  if(owned[it.id]){have++;return}
+  const c=(it.price||0)*(it.qty||1);
+  if(it.g==="now")now+=c; else if(it.g==="later")later+=c;
+ });
+ document.getElementById("sumNow").textContent=fmt(now);
+ document.getElementById("sumLater").textContent=fmt(later);
+ document.getElementById("sumHave").textContent=have+" món";
+}
+document.addEventListener("change",e=>{
+ const cb=e.target; if(!cb.id||!cb.id.startsWith("own-"))return;
+ const id=cb.id.slice(4); owned[id]=cb.checked;
+ cb.closest(".item").classList.toggle("owned",cb.checked);
+ try{localStorage.setItem(KEY,JSON.stringify(owned))}catch(e){}
+ totals();
+});
+render();
+</script>
